@@ -18,12 +18,14 @@ export default function ProductCard({ product, canBuy = true }) {
     imagenUrl,
   } = product;
 
-  // URL base del backend
-  const API_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
+  //  Usa la MISMA variable que Vercel tiene: VITE_API_URL
+  const BACKEND_URL = (import.meta.env.VITE_API_URL || "").trim().replace(/\/+$/, "");
 
   // 1) Intentar con nombres de campos típicos
   let rawImagePath =
     imagenUrl ||
+    product.imagen_url ||     //  por si viene así del backend
+    product.imagenUrl ||
     product.imagen ||
     product.imagenURL ||
     product.imageUrl ||
@@ -45,10 +47,14 @@ export default function ProductCard({ product, canBuy = true }) {
   }
 
   // 3) Construir la URL final
+  // - Si ya viene http (Cloudinary), se usa tal cual
+  // - Si viene "/uploads/..." y tenemos BACKEND_URL, se arma la ruta
   const imageSrc = rawImagePath
     ? rawImagePath.startsWith("http")
       ? rawImagePath
-      : `${API_URL}${rawImagePath}`
+      : BACKEND_URL
+      ? `${BACKEND_URL}${rawImagePath}`
+      : null
     : null;
 
   const handleAddToCart = async () => {
@@ -92,9 +98,7 @@ export default function ProductCard({ product, canBuy = true }) {
         )}
 
         {descripcion && (
-          <p className="text-sm text-slate-300 line-clamp-2">
-            {descripcion}
-          </p>
+          <p className="text-sm text-slate-300 line-clamp-2">{descripcion}</p>
         )}
 
         <div className="mt-1 flex items-center justify-between">

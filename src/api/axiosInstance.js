@@ -1,20 +1,17 @@
 // src/api/axiosInstance.js
 import axios from "axios";
 
-// En Vite, las variables deben empezar con VITE_
-const API_URL = import.meta.env.VITE_API_URL;
+//  Vercel usa esta variable
+const API_URL = (import.meta.env.VITE_API_URL || "").trim().replace(/\/+$/, "");
 
-// Normaliza para evitar "////"
-const normalized = (API_URL || "").replace(/\/+$/, "");
-
-// Si no existe la variable, usa localhost (solo para desarrollo)
-const baseURL = normalized
-  ? `${normalized}/api`
+// fallback SOLO para desarrollo local
+const baseURL = API_URL
+  ? `${API_URL}/api`
   : "http://localhost:4000/api";
 
 export const api = axios.create({
   baseURL,
-  withCredentials: true, // déjalo true si usas cookies/sesión
+  withCredentials: true,
 });
 
 export default api;

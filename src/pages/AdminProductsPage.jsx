@@ -1,8 +1,6 @@
 // frontend/src/pages/AdminProductsPage.jsx
 import { useEffect, useState } from "react";
-import axios from "axios";
-
-const API_URL = "http://localhost:4000/api";
+import api from "../api/axiosInstance"; //  usamos la instancia central
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState([]);
@@ -33,12 +31,9 @@ export default function AdminProductsPage() {
         setLoading(true);
 
         const [prodRes, catRes] = await Promise.all([
-          axios.get(`${API_URL}/productos/getallproducts`, {
-            withCredentials: true,
-          }),
-          axios.get(`${API_URL}/categorias`, {
-            withCredentials: true,
-          }),
+          //  OJO: usa tus rutas del backend (aquí estabas usando /getallproducts)
+          api.get("/productos/getallproducts"),
+          api.get("/categorias"),
         ]);
 
         setProducts(prodRes.data || []);
@@ -59,7 +54,6 @@ export default function AdminProductsPage() {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    // disponible viene como "true"/"false" cuando es select
     if (name === "disponible") {
       setForm((prev) => ({ ...prev, [name]: value === "true" }));
     } else {
@@ -98,7 +92,7 @@ export default function AdminProductsPage() {
       setSaving(true);
 
       if (editingId) {
-        // 🔧 EDITAR (sin cambiar imagen por ahora)
+        //  EDITAR (sin cambiar imagen por ahora)
         const payload = {
           nombre: form.nombre.trim(),
           descripcion: form.descripcion,
@@ -107,32 +101,26 @@ export default function AdminProductsPage() {
           categoria: form.categoria,
         };
 
-        const res = await axios.put(
-          `${API_URL}/productos/${editingId}`,
-          payload,
-          { withCredentials: true }
-        );
+        const res = await api.put(`/productos/${editingId}`, payload);
 
         setProducts((prev) =>
           prev.map((p) => (p._id === editingId ? res.data : p))
         );
         setSuccess("Producto actualizado correctamente");
       } else {
-        // ➕ CREAR (con imagen a Cloudinary)
+        // ➕ CREAR (con imagen)
         const data = new FormData();
         data.append("nombre", form.nombre.trim());
         data.append("descripcion", form.descripcion);
-        data.append("precio", form.precio);
-        data.append("disponible", form.disponible);
+        data.append("precio", String(form.precio));
+        data.append("disponible", String(form.disponible));
         data.append("categoria", form.categoria);
         if (form.imagen) data.append("imagen", form.imagen);
 
-        const res = await axios.post(`${API_URL}/productos`, data, {
-          withCredentials: true,
+        const res = await api.post("/productos", data, {
           headers: { "Content-Type": "multipart/form-data" },
         });
 
-        // agregamos arriba
         setProducts((prev) => [res.data, ...prev]);
         setSuccess("Producto creado correctamente");
       }
@@ -161,7 +149,7 @@ export default function AdminProductsPage() {
       precio: product.precio ?? "",
       disponible: product.disponible,
       categoria: product.categoria?._id || product.categoria || "",
-      imagen: null, // no tocamos imagen al editar
+      imagen: null,
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -171,9 +159,7 @@ export default function AdminProductsPage() {
     if (!confirmar) return;
 
     try {
-      await axios.delete(`${API_URL}/productos/${id}`, {
-        withCredentials: true,
-      });
+      await api.delete(`/productos/${id}`);
       setProducts((prev) => prev.filter((p) => p._id !== id));
     } catch (err) {
       console.error(err);
@@ -187,7 +173,6 @@ export default function AdminProductsPage() {
     <div className="max-w-6xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">Administrar productos</h1>
 
-      {/* Mensajes */}
       {error && (
         <div className="mb-4 bg-red-500/90 text-white px-4 py-2 rounded">
           {error}
@@ -199,7 +184,6 @@ export default function AdminProductsPage() {
         </div>
       )}
 
-      {/* FORMULARIO CREAR / EDITAR */}
       <div className="bg-slate-800/80 border border-slate-700 rounded-xl p-6 mb-10">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">
@@ -312,7 +296,6 @@ export default function AdminProductsPage() {
         </form>
       </div>
 
-      {/* LISTADO DE PRODUCTOS */}
       <h2 className="text-xl font-semibold mb-4">Listado de productos</h2>
 
       {loading ? (
@@ -356,12 +339,8 @@ export default function AdminProductsPage() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-2">
-                    {p.categoria?.nombre || "—"}
-                  </td>
-                  <td className="px-4 py-2">
-                    ${Number(p.precio).toFixed(2)}
-                  </td>
+                  <td className="px-4 py-2">{p.categoria?.nombre || "—"}</td>
+                  <td className="px-4 py-2">${Number(p.precio).toFixed(2)}</td>
                   <td className="px-4 py-2">
                     {p.disponible ? (
                       <span className="inline-block px-2 py-1 text-xs rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
