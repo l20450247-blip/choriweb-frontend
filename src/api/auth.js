@@ -1,14 +1,14 @@
 // src/api/auth.js
 import api from "./axiosInstance";
 
-// Registro
-export const registerRequest = (user) => api.post("/auth/register", user);
+// Registrar usuario
+export const registerRequest = (data) => api.post("/auth/register", data);
 
-// Login
-export const loginRequest = (user) => api.post("/auth/login", user);
+// Iniciar sesión
+export const loginRequest = (data) => api.post("/auth/login", data);
 
-// Logout
+// Cerrar sesión
 export const logoutRequest = () => api.post("/auth/logout");
 
-// Perfil (usuario autenticado)
-export const profileRequest = () => api.get("/auth/profile");
+// Verificar sesión / token (si lo tienes en tu backend)
+export const verifyTokenRequest = () => api.get("/auth/verify");
