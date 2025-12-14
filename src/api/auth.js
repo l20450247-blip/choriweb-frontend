@@ -1,6 +1,14 @@
-import { api } from "./axiosInstance";
+// src/api/auth.js
+import api from "./axiosInstance";
 
-export const registerRequest = (data) => api.post("/auth/register", data);
-export const loginRequest = (data) => api.post("/auth/login", data);
+// Registro
+export const registerRequest = (user) => api.post("/auth/register", user);
+
+// Login
+export const loginRequest = (user) => api.post("/auth/login", user);
+
+// Logout
 export const logoutRequest = () => api.post("/auth/logout");
+
+// Perfil (usuario autenticado)
 export const profileRequest = () => api.get("/auth/profile");
