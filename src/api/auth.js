@@ -10,8 +10,8 @@ export const loginRequest = (data) => api.post("/auth/login", data);
 // Cerrar sesión
 export const logoutRequest = () => api.post("/auth/logout");
 
-// Verificar sesión / token (si tienes ese endpoint)
-export const verifyTokenRequest = () => api.get("/auth/verify");
-
-// Perfil (si lo tienes)
+// Perfil
 export const profileRequest = () => api.get("/auth/profile");
+
+// Verificar token (opcional: úsalo solo si tu backend lo tiene)
+export const verifyTokenRequest = () => api.get("/auth/verify");
