@@ -2,24 +2,22 @@
 import axios from "axios";
 import Cookies from "js-cookie";
 
-// En Vite, las variables deben empezar con VITE_
-const API_URL = import.meta.env.VITE_API_URL;
-
-// Normaliza para evitar "////"
-const normalized = (API_URL || "").replace(/\/+$/, "");
-
-// Si no existe la variable, usa localhost (solo para desarrollo)
-const baseURL = normalized ? `${normalized}/api` : "http://localhost:4000/api";
+// VITE_API_URL = https://choriweb-backend.onrender.com
+const RAW = import.meta.env.VITE_API_URL || "http://localhost:4000";
+const API_URL = RAW.trim().replace(/\/+$/, ""); // quita slash final
 
 export const api = axios.create({
-  baseURL,
-  withCredentials: true,
+  baseURL: `${API_URL}/api`,
+  withCredentials: true, // lo dejamos por si el backend usa cookies, pero YA NO dependemos de eso
 });
 
-//  En cada request, mandar el token como Authorization: Bearer ...
+//  Interceptor: manda token en Authorization si existe en cookie del FRONT
 api.interceptors.request.use((config) => {
-  const token = Cookies.get("token"); // cookie del FRONT (vercel)
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  const token = Cookies.get("token");
+  if (token) {
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${token}`;
+  }
   return config;
 });
 
