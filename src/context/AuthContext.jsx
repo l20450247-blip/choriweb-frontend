@@ -18,14 +18,17 @@ export function AuthProvider({ children }) {
   const [errors, setErrors] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // 🔹 Registrar usuario
+  // ✅ Registrar usuario
   const signup = async (data) => {
     try {
       setErrors([]);
       const res = await registerRequest(data);
+
       setUser(res.data);
       setIsAuthenticated(true);
-      setIsAdmin(res.data.tipo === import.meta.env.VITE_ROLE_ADMIN);
+
+      // ✅ Detectar admin SIN variables de entorno
+      setIsAdmin(res.data?.tipo === "admin");
     } catch (error) {
       console.error("Error en signup:", error);
       if (error.response?.data?.message) {
@@ -36,14 +39,17 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // 🔹 Login
+  // ✅ Login
   const signin = async (data) => {
     try {
       setErrors([]);
       const res = await loginRequest(data);
+
       setUser(res.data);
       setIsAuthenticated(true);
-      setIsAdmin(res.data.tipo === import.meta.env.VITE_ROLE_ADMIN);
+
+      // ✅ Detectar admin SIN variables de entorno
+      setIsAdmin(res.data?.tipo === "admin");
     } catch (error) {
       console.error("Error en signin:", error);
       if (error.response?.data?.message) {
@@ -54,7 +60,7 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // 🔹 Logout (signout)
+  // ✅ Logout (signout)
   const signout = async () => {
     console.log("👉 Ejecutando signout() desde AuthContext");
     try {
@@ -67,11 +73,11 @@ export function AuthProvider({ children }) {
       setUser(null);
       setIsAuthenticated(false);
       setIsAdmin(false);
-      console.log(" Sesión limpiada en el front");
+      console.log("✅ Sesión limpiada en el front");
     }
   };
 
-  // 🔹 Verificar sesión al recargar
+  // ✅ Verificar sesión al recargar
   useEffect(() => {
     const checkLogin = async () => {
       try {
@@ -80,17 +86,22 @@ export function AuthProvider({ children }) {
           setLoading(false);
           setIsAuthenticated(false);
           setUser(null);
+          setIsAdmin(false);
           return;
         }
 
         const res = await profileRequest();
+
         setUser(res.data);
         setIsAuthenticated(true);
-        setIsAdmin(res.data.tipo === import.meta.env.VITE_ROLE_ADMIN);
+
+        // ✅ Detectar admin SIN variables de entorno
+        setIsAdmin(res.data?.tipo === "admin");
       } catch (error) {
         console.error("Error al verificar sesión:", error);
         setIsAuthenticated(false);
         setUser(null);
+        setIsAdmin(false);
       } finally {
         setLoading(false);
       }
@@ -99,7 +110,7 @@ export function AuthProvider({ children }) {
     checkLogin();
   }, []);
 
-  // 🔹 Limpiar errores
+  // ✅ Limpiar errores
   useEffect(() => {
     if (errors.length > 0) {
       const timer = setTimeout(() => setErrors([]), 4000);
@@ -117,8 +128,8 @@ export function AuthProvider({ children }) {
         loading,
         signup,
         signin,
-        signout,           // nombre oficial
-        logout: signout,   // alias, por si acaso
+        signout, // nombre oficial
+        logout: signout, // alias, por si acaso
       }}
     >
       {children}
