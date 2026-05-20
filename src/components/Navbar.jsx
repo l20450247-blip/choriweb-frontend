@@ -4,98 +4,112 @@ import { useAuth } from "../context/AuthContext";
 export default function Navbar() {
   const { isAuthenticated, user, isAdmin, signout } = useAuth();
 
+  const isRutero = user?.tipo === "rutero";
+
   const linkBase =
-    "px-4 py-2 text-sm font-medium transition-colors duration-150";
+    "px-3 py-2 text-xs md:text-sm font-medium transition-colors duration-150 whitespace-nowrap";
+
   const getLinkClass = ({ isActive }) =>
     `${linkBase} ${
       isActive ? "text-amber-400" : "text-slate-100 hover:text-amber-300"
     }`;
 
   const handleLogoutClick = async () => {
-    console.log(" Click en botón Salir");
     await signout();
   };
 
   return (
-    <nav className="bg-slate-950 text-white">
-      <div className="max-w-6xl mx-auto flex items-center justify-between px-4 py-3">
-        {/* Logo */}
-        <Link to="/" className="text-xl font-bold tracking-wide">
-          Choriweb
-        </Link>
+    <nav className="bg-slate-950 text-white sticky top-0 z-50 shadow-lg">
+      <div className="max-w-7xl mx-auto px-4 py-3">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <Link
+            to="/"
+            className="text-xl md:text-2xl font-extrabold tracking-wide text-white"
+          >
+            ChoriWeb
+          </Link>
 
-        {/* Links */}
-        <div className="flex items-center gap-2">
-          <NavLink to="/productos" className={getLinkClass}>
-            Productos
-          </NavLink>
+          <div className="flex items-center gap-1 md:gap-2 overflow-x-auto pb-1 md:pb-0">
+            {isAuthenticated && !isRutero && (
+              <NavLink to="/productos" className={getLinkClass}>
+                Ver tienda
+              </NavLink>
+            )}
 
-          {/* Cliente */}
-          {isAuthenticated && !isAdmin && (
-            <>
-              <NavLink to="/carrito" className={getLinkClass}>
-                Mi carrito
-              </NavLink>
-              <NavLink to="/mis-pedidos" className={getLinkClass}>
-                Mis pedidos
-              </NavLink>
-            </>
-          )}
+            {isAuthenticated && !isAdmin && !isRutero && (
+              <>
+                <NavLink to="/carrito" className={getLinkClass}>
+                  Mi carrito
+                </NavLink>
 
-          {/* Admin */}
-          {isAuthenticated && isAdmin && (
-            <>
-              <NavLink to="/admin/productos" className={getLinkClass}>
-                Admin productos
-              </NavLink>
-              <NavLink to="/admin/categorias" className={getLinkClass}>
-                Admin categorías
-              </NavLink>
-              <NavLink to="/admin/pedidos" className={getLinkClass}>
-                Admin pedidos
-              </NavLink>
-            </>
-          )}
-        </div>
+                <NavLink to="/mis-pedidos" className={getLinkClass}>
+                  Mis pedidos
+                </NavLink>
+              </>
+            )}
 
-        {/* Usuario */}
-        <div className="flex items-center gap-3">
-          {isAuthenticated ? (
-            <>
-              <span className="text-sm text-slate-300">
-                {isAdmin ? (
-                  <>
-                    Administrador{" "}
-                    <span className="text-emerald-400">(Admin)</span>
-                  </>
-                ) : (
-                  <>
-                    {user?.nombre || "Cliente"}{" "}
-                    <span className="text-emerald-400">(Cliente)</span>
-                  </>
-                )}
-              </span>
-              <button
-                type="button"
-                onClick={handleLogoutClick}
-                className="bg-red-500 hover:bg-red-600 text-sm font-semibold px-4 py-1.5 rounded"
-              >
-                Salir
-              </button>
-            </>
-          ) : (
-            <>
-              <NavLink to="/login" className={getLinkClass}>
-                Iniciar sesión
+            {isAuthenticated && isRutero && (
+              <NavLink to="/rutero/pedidos" className={getLinkClass}>
+                Mis entregas
               </NavLink>
-              <NavLink to="/register" className={getLinkClass}>
-                Registrarse
-              </NavLink>
-            </>
-          )}
+            )}
+
+            {isAuthenticated && isAdmin && (
+              <>
+                <NavLink to="/admin/productos" className={getLinkClass}>
+                  Productos
+                </NavLink>
+
+                <NavLink to="/admin/categorias" className={getLinkClass}>
+                  Categorías
+                </NavLink>
+
+                <NavLink to="/admin/pedidos" className={getLinkClass}>
+                  Pedidos
+                </NavLink>
+
+                <NavLink to="/admin/inventario" className={getLinkClass}>
+                  Inventario
+                </NavLink>
+
+                <NavLink to="/admin/rutas" className={getLinkClass}>
+                  Rutas
+                </NavLink>
+              </>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between md:justify-end gap-3">
+            {isAuthenticated ? (
+              <>
+                <span className="text-xs md:text-sm text-slate-300 truncate">
+                  {user?.nombre || "Usuario"}{" "}
+                  <span className="text-emerald-400">
+                    ({isAdmin ? "Admin" : isRutero ? "Rutero" : "Cliente"})
+                  </span>
+                </span>
+
+                <button
+                  onClick={handleLogoutClick}
+                  className="bg-red-500 hover:bg-red-600 text-xs md:text-sm font-semibold px-4 py-2 rounded-lg"
+                >
+                  Salir
+                </button>
+              </>
+            ) : (
+              <div className="flex items-center gap-2 ml-auto">
+                <NavLink to="/login" className={getLinkClass}>
+                  Iniciar sesión
+                </NavLink>
+
+                <NavLink to="/register" className={getLinkClass}>
+                  Registrarse
+                </NavLink>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </nav>
   );
 }
-

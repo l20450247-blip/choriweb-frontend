@@ -6,17 +6,19 @@ import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 
-// Páginas cliente
 import ProductsPage from "./pages/ProductsPage";
 import CartPage from "./pages/CartPage";
 import MyOrdersPage from "./pages/MyOrdersPage";
+import PedidoRapidoPage from "./pages/PedidoRapidoPage";
 
-// Páginas admin
 import AdminProductsPage from "./pages/AdminProductsPage";
 import AdminCategoriesPage from "./pages/AdminCategoriesPage";
 import AdminOrdersPage from "./pages/AdminOrdersPage";
+import AdminInventoryPage from "./pages/AdminInventoryPage";
+import AdminRoutesPage from "./pages/AdminRoutesPage";
 
-// Rutas protegidas
+import RuteroOrdersPage from "./pages/RuteroOrdersPage";
+
 import ProtectedRoute from "./ProtectedRoute";
 
 function App() {
@@ -25,12 +27,13 @@ function App() {
       <Navbar />
 
       <Routes>
-        {/*  Páginas públicas */}
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 
-        {/*  Productos para CLIENTES (logueados) */}
+        {/* Link mágico para cliente */}
+        <Route path="/pedido-rapido/:token" element={<PedidoRapidoPage />} />
+
         <Route
           path="/productos"
           element={
@@ -40,7 +43,6 @@ function App() {
           }
         />
 
-        {/* Cliente: carrito */}
         <Route
           path="/carrito"
           element={
@@ -50,7 +52,6 @@ function App() {
           }
         />
 
-        {/*  Cliente: mis pedidos */}
         <Route
           path="/mis-pedidos"
           element={
@@ -60,11 +61,19 @@ function App() {
           }
         />
 
-        {/*  Admin */}
+        <Route
+          path="/rutero/pedidos"
+          element={
+            <ProtectedRoute>
+              <RuteroOrdersPage />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/admin/productos"
           element={
-            <ProtectedRoute adminOnly>
+            <ProtectedRoute requireAdmin>
               <AdminProductsPage />
             </ProtectedRoute>
           }
@@ -73,7 +82,7 @@ function App() {
         <Route
           path="/admin/categorias"
           element={
-            <ProtectedRoute adminOnly>
+            <ProtectedRoute requireAdmin>
               <AdminCategoriesPage />
             </ProtectedRoute>
           }
@@ -82,8 +91,26 @@ function App() {
         <Route
           path="/admin/pedidos"
           element={
-            <ProtectedRoute adminOnly>
+            <ProtectedRoute requireAdmin>
               <AdminOrdersPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/inventario"
+          element={
+            <ProtectedRoute requireAdmin>
+              <AdminInventoryPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/rutas"
+          element={
+            <ProtectedRoute requireAdmin>
+              <AdminRoutesPage />
             </ProtectedRoute>
           }
         />

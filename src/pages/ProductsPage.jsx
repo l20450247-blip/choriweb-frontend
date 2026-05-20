@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import ProductCard from "../components/ProductCard";
 import { useAuth } from "../context/AuthContext";
-import api from "../api/axiosInstance"; // ✅ usa la instancia central
+import api from "../api/axiosInstance";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
@@ -17,13 +17,10 @@ export default function ProductsPage() {
         setLoading(true);
         setError(null);
 
-        // ✅ Si tu backend expone /api/productos (por tu app.js sí)
         const res = await api.get("/productos");
-
-        // axios regresa data directo
         setProducts(res.data || []);
       } catch (err) {
-        console.error(err);
+        console.error("Error cargando productos:", err);
         setError("No se pudieron cargar los productos.");
       } finally {
         setLoading(false);
@@ -34,34 +31,40 @@ export default function ProductsPage() {
   }, []);
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <h1 className="text-3xl font-bold mb-4">Productos</h1>
-      <p className="text-slate-300 mb-6">
-        Explora los productos disponibles de Choriweb.
-      </p>
+    <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-5 md:py-8">
+      <div className="mb-6 bg-slate-800/70 border border-slate-700 rounded-2xl p-4 sm:p-6 shadow-lg">
+        <h1 className="text-3xl sm:text-4xl font-extrabold mb-2 text-white">
+          Productos
+        </h1>
 
-      {loading && <div className="text-slate-300">Cargando productos...</div>}
+        <p className="text-slate-300 text-sm sm:text-base">
+          Explora los productos disponibles de ChoriMalpa y agrega tus kilos al
+          carrito.
+        </p>
+      </div>
+
+      {loading && (
+        <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 text-center text-slate-300">
+          Cargando productos...
+        </div>
+      )}
 
       {error && (
-        <div className="bg-red-500/80 text-white px-4 py-2 rounded mb-4">
+        <div className="bg-red-500/20 border border-red-500/60 text-red-100 px-4 py-3 rounded-xl mb-4">
           {error}
         </div>
       )}
 
       {!loading && !error && products.length === 0 && (
-        <div className="text-slate-400">
+        <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 text-center text-slate-400">
           No hay productos registrados todavía.
         </div>
       )}
 
       {!loading && !error && products.length > 0 && (
-        <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:gap-5 lg:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {products.map((p) => (
-            <ProductCard
-              key={p._id}
-              product={p}
-              canBuy={!isAdmin} // SOLO CLIENTE PUEDE VER BOTÓN DE COMPRA
-            />
+            <ProductCard key={p._id} product={p} canBuy={!isAdmin} />
           ))}
         </div>
       )}

@@ -16,92 +16,138 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isRutero, setIsRutero] = useState(false);
   const [errors, setErrors] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const setSessionFromResponse = (data) => {
-    // ✅ si backend manda token, lo guardamos
-    const token = data?.token;
-    if (token) localStorage.setItem("token", token);
+  const normalizarUsuario = (u = {}) => {
+    const tipo = u.tipo || "cliente";
 
-    // ✅ el backend puede mandar { user: {...}, token } o directo el user
-    const u = data?.user || data;
-    setUser(u);
-    setIsAuthenticated(true);
-    setIsAdmin(u?.tipo === "admin");
+    return {
+      ...u,
+      id: u.id || u._id || "",
+      _id: u._id || u.id || "",
+      tipo,
+      telefono: u.telefono || "",
+      rutaHabitual: u.rutaHabitual || "",
+      rutasAsignadas: Array.isArray(u.rutasAsignadas) ? u.rutasAsignadas : [],
+      direccion: {
+        calle: u.direccion?.calle || "",
+        numero: u.direccion?.numero || "",
+        colonia: u.direccion?.colonia || "",
+        municipio: u.direccion?.municipio || "",
+        estado: u.direccion?.estado || "",
+        cp: u.direccion?.cp || "",
+        referencias: u.direccion?.referencias || "",
+      },
+    };
   };
 
-  // ✅ Registrar usuario
+  const aplicarSesion = (usuarioNormalizado) => {
+    setUser(usuarioNormalizado);
+    setIsAuthenticated(true);
+
+    setIsAdmin(
+      usuarioNormalizado?.tipo === "admin" ||
+        usuarioNormalizado?.tipo === "admin_empresa" ||
+        usuarioNormalizado?.tipo === "super_admin"
+    );
+
+    setIsRutero(usuarioNormalizado?.tipo === "rutero");
+  };
+
+  const limpiarSesion = () => {
+    Cookies.remove("token");
+    localStorage.removeItem("token");
+    localStorage.removeItem("usuario_magic_link");
+
+    setUser(null);
+    setIsAuthenticated(false);
+    setIsAdmin(false);
+    setIsRutero(false);
+  };
+
+  const setSessionFromResponse = (data) => {
+    const token = data?.token;
+
+    if (token) {
+      localStorage.setItem("token", token);
+    }
+
+    const rawUser = data?.user || data;
+    const usuarioNormalizado = normalizarUsuario(rawUser);
+
+    aplicarSesion(usuarioNormalizado);
+  };
+
   const signup = async (data) => {
     try {
       setErrors([]);
+
       const res = await registerRequest(data);
       setSessionFromResponse(res.data);
+
+      return res.data;
     } catch (error) {
-      console.error("Error en signup:", error);
-      if (error.response?.data?.message) setErrors(error.response.data.message);
-      else setErrors(["Error al registrarse"]);
+      const mensajes =
+        error.response?.data?.message || ["Error al registrarse"];
+
+      setErrors(Array.isArray(mensajes) ? mensajes : [mensajes]);
+      throw error;
     }
   };
 
-  // ✅ Login
   const signin = async (data) => {
     try {
       setErrors([]);
+
       const res = await loginRequest(data);
       setSessionFromResponse(res.data);
+
+      return res.data;
     } catch (error) {
-      console.error("Error en signin:", error);
-      if (error.response?.data?.message) setErrors(error.response.data.message);
-      else setErrors(["Error al iniciar sesión"]);
+      const mensajes =
+        error.response?.data?.message || ["Error al iniciar sesión"];
+
+      setErrors(Array.isArray(mensajes) ? mensajes : [mensajes]);
+      throw error;
     }
   };
 
-  // ✅ Logout
   const signout = async () => {
-    console.log("👉 Ejecutando signout() desde AuthContext");
     try {
       await logoutRequest();
-    } catch (error) {
-      console.error("Error en logoutRequest (ignorado en front):", error);
+    } catch (_error) {
+      // limpiamos sesión local aunque falle backend
     } finally {
-      // ✅ limpiar todo
-      Cookies.remove("token");
-      localStorage.removeItem("token");
-      setUser(null);
-      setIsAuthenticated(false);
-      setIsAdmin(false);
-      console.log("✅ Sesión limpiada en el front");
+      limpiarSesion();
     }
   };
 
-  // ✅ Verificar sesión al recargar
   useEffect(() => {
     const checkLogin = async () => {
       try {
-        // ✅ ahora la fuente principal es localStorage
         const token = localStorage.getItem("token");
+        const magicUserRaw = localStorage.getItem("usuario_magic_link");
 
-        // (si no hay token en localStorage, no intentamos profile)
         if (!token) {
-          setLoading(false);
-          setIsAuthenticated(false);
-          setUser(null);
-          setIsAdmin(false);
+          limpiarSesion();
+          return;
+        }
+
+        // LINK MÁGICO:
+        // si ya tenemos usuario guardado del link, entramos sin pedir profile
+        if (magicUserRaw) {
+          const magicUser = JSON.parse(magicUserRaw);
+          aplicarSesion(normalizarUsuario(magicUser));
           return;
         }
 
         const res = await profileRequest();
-        const u = res.data?.user || res.data;
-
-        setUser(u);
-        setIsAuthenticated(true);
-        setIsAdmin(u?.tipo === "admin");
-      } catch (error) {
-        console.error("Error al verificar sesión:", error);
-        setIsAuthenticated(false);
-        setUser(null);
-        setIsAdmin(false);
+        const rawUser = res.data?.user || res.data;
+        aplicarSesion(normalizarUsuario(rawUser));
+      } catch (_error) {
+        limpiarSesion();
       } finally {
         setLoading(false);
       }
@@ -110,12 +156,14 @@ export function AuthProvider({ children }) {
     checkLogin();
   }, []);
 
-  // ✅ Limpiar errores
   useEffect(() => {
-    if (errors.length > 0) {
-      const timer = setTimeout(() => setErrors([]), 4000);
-      return () => clearTimeout(timer);
-    }
+    if (errors.length === 0) return;
+
+    const timer = setTimeout(() => {
+      setErrors([]);
+    }, 4000);
+
+    return () => clearTimeout(timer);
   }, [errors]);
 
   return (
@@ -124,6 +172,7 @@ export function AuthProvider({ children }) {
         user,
         isAuthenticated,
         isAdmin,
+        isRutero,
         errors,
         loading,
         signup,
