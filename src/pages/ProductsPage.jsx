@@ -31,9 +31,9 @@ export default function ProductsPage() {
   }, []);
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-5 md:py-8">
-      <div className="mb-6 bg-slate-800/70 border border-slate-700 rounded-2xl p-4 sm:p-6 shadow-lg">
-        <h1 className="text-3xl sm:text-4xl font-extrabold mb-2 text-white">
+    <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 md:py-8">
+      <div className="mb-4 sm:mb-6 bg-slate-800/70 border border-slate-700 rounded-2xl p-4 sm:p-6 shadow-lg">
+        <h1 className="text-2xl sm:text-4xl font-extrabold mb-2 text-white">
           Productos
         </h1>
 
@@ -62,9 +62,9 @@ export default function ProductsPage() {
       )}
 
       {!loading && !error && products.length > 0 && (
-        <div className="grid gap-4 sm:gap-5 lg:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:gap-5 lg:gap-6 grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
           {products.map((p) => (
-            <ProductCard key={p._id} product={p} canBuy={!isAdmin} />
+            <ProductCard key={p._id} product={p} canBuy={!isAdmin} compact />
           ))}
         </div>
       )}

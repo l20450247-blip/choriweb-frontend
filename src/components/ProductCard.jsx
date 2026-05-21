@@ -2,21 +2,14 @@
 import { useState } from "react";
 import { useCart } from "../context/CartContext.jsx";
 
-export default function ProductCard({ product, canBuy = true }) {
+export default function ProductCard({ product, canBuy = true, compact = false }) {
   const { addToCart, loading } = useCart();
   const [cantidad, setCantidad] = useState(1);
 
   if (!product) return null;
 
-  const {
-    _id,
-    nombre,
-    descripcion,
-    precio,
-    categoria,
-    disponible,
-    imagenUrl,
-  } = product;
+  const { _id, nombre, descripcion, precio, categoria, disponible, imagenUrl } =
+    product;
 
   const BACKEND_URL = (import.meta.env.VITE_API_URL || "")
     .trim()
@@ -67,9 +60,13 @@ export default function ProductCard({ product, canBuy = true }) {
     });
 
   return (
-    <div className="bg-slate-800/90 border border-slate-700 rounded-3xl overflow-hidden flex flex-col shadow-xl hover:border-amber-400/70 transition-all duration-200">
+    <div className="bg-slate-800/90 border border-slate-700 rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col shadow-xl hover:border-amber-400/70 transition-all duration-200">
       {imageSrc ? (
-        <div className="h-56 sm:h-60 w-full overflow-hidden bg-slate-900">
+        <div
+          className={`w-full overflow-hidden bg-slate-900 ${
+            compact ? "h-32 xs:h-36 sm:h-52" : "h-56 sm:h-60"
+          }`}
+        >
           <img
             src={imageSrc}
             alt={nombre}
@@ -77,19 +74,23 @@ export default function ProductCard({ product, canBuy = true }) {
           />
         </div>
       ) : (
-        <div className="h-56 sm:h-60 w-full bg-slate-900 flex items-center justify-center text-slate-500 text-sm">
+        <div
+          className={`w-full bg-slate-900 flex items-center justify-center text-slate-500 text-xs sm:text-sm ${
+            compact ? "h-32 xs:h-36 sm:h-52" : "h-56 sm:h-60"
+          }`}
+        >
           Sin imagen
         </div>
       )}
 
-      <div className="flex-1 flex flex-col px-4 sm:px-5 py-4 gap-3">
+      <div className="flex-1 flex flex-col px-3 sm:px-5 py-3 sm:py-4 gap-2 sm:gap-3">
         <div>
-          <h3 className="text-xl font-extrabold text-slate-50 leading-tight break-words">
+          <h3 className="text-base sm:text-xl font-extrabold text-slate-50 leading-tight break-words line-clamp-2">
             {nombre}
           </h3>
 
           {categoria && (
-            <p className="text-xs text-amber-300 mt-1">
+            <p className="text-[11px] sm:text-xs text-amber-300 mt-1 line-clamp-2">
               Categoría:{" "}
               <span className="text-slate-200">
                 {categoria?.nombre || categoria}
@@ -99,18 +100,18 @@ export default function ProductCard({ product, canBuy = true }) {
         </div>
 
         {descripcion && (
-          <p className="text-sm text-slate-300 leading-relaxed line-clamp-3">
+          <p className="text-xs sm:text-sm text-slate-300 leading-relaxed line-clamp-2 sm:line-clamp-3">
             {descripcion}
           </p>
         )}
 
-        <div className="mt-auto flex items-center justify-between gap-3">
-          <span className="text-2xl font-extrabold text-amber-400">
+        <div className="mt-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <span className="text-xl sm:text-2xl font-extrabold text-amber-400">
             {formatMXN(precio)}
           </span>
 
           <span
-            className={`text-xs px-3 py-1.5 rounded-full font-semibold whitespace-nowrap ${
+            className={`text-[11px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded-full font-semibold w-fit whitespace-nowrap ${
               disponible
                 ? "bg-emerald-600/25 text-emerald-300 border border-emerald-500/60"
                 : "bg-red-600/25 text-red-300 border border-red-500/60"
@@ -121,9 +122,9 @@ export default function ProductCard({ product, canBuy = true }) {
         </div>
 
         {canBuy && (
-          <div className="mt-3 bg-slate-900/70 border border-slate-700 rounded-2xl p-3 flex flex-col gap-3">
-            <label className="text-sm font-semibold text-slate-200">
-              Cantidad en kg
+          <div className="mt-2 sm:mt-3 bg-slate-900/70 border border-slate-700 rounded-2xl p-2 sm:p-3 flex flex-col gap-2 sm:gap-3">
+            <label className="text-xs sm:text-sm font-semibold text-slate-200">
+              Kg
             </label>
 
             <input
@@ -131,7 +132,7 @@ export default function ProductCard({ product, canBuy = true }) {
               min="1"
               step="0.5"
               inputMode="decimal"
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-base text-white outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base text-white outline-none focus:ring-2 focus:ring-amber-500"
               value={cantidad}
               onChange={(e) => setCantidad(e.target.value)}
             />
@@ -140,13 +141,13 @@ export default function ProductCard({ product, canBuy = true }) {
               type="button"
               disabled={!disponible || loading}
               onClick={handleAddToCart}
-              className={`w-full inline-flex items-center justify-center rounded-xl px-4 py-3 text-base font-bold transition min-h-[48px] ${
+              className={`w-full inline-flex items-center justify-center rounded-xl px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-base font-bold transition min-h-[42px] sm:min-h-[48px] ${
                 !disponible || loading
                   ? "bg-emerald-600/40 text-emerald-100 cursor-not-allowed"
                   : "bg-emerald-500 hover:bg-emerald-400 text-slate-950"
               }`}
             >
-              {loading ? "Procesando..." : "Agregar al carrito"}
+              {loading ? "..." : "Agregar"}
             </button>
           </div>
         )}
