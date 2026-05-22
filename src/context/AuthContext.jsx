@@ -1,4 +1,3 @@
-// src/context/AuthContext.jsx
 import { createContext, useContext, useEffect, useState } from "react";
 import Cookies from "js-cookie";
 import {
@@ -19,6 +18,27 @@ export function AuthProvider({ children }) {
   const [isRutero, setIsRutero] = useState(false);
   const [errors, setErrors] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const guardarToken = (token) => {
+    if (!token) return;
+
+    localStorage.setItem("token", token);
+    sessionStorage.setItem("token", token);
+    Cookies.set("token", token, {
+      expires: 7,
+      sameSite: "Lax",
+      secure: window.location.protocol === "https:",
+    });
+  };
+
+  const obtenerToken = () => {
+    return (
+      localStorage.getItem("token") ||
+      sessionStorage.getItem("token") ||
+      Cookies.get("token") ||
+      ""
+    );
+  };
 
   const normalizarUsuario = (u = {}) => {
     const tipo = u.tipo || "cliente";
@@ -59,7 +79,9 @@ export function AuthProvider({ children }) {
   const limpiarSesion = () => {
     Cookies.remove("token");
     localStorage.removeItem("token");
+    sessionStorage.removeItem("token");
     localStorage.removeItem("usuario_magic_link");
+    sessionStorage.removeItem("usuario_magic_link");
 
     setUser(null);
     setIsAuthenticated(false);
@@ -71,7 +93,7 @@ export function AuthProvider({ children }) {
     const token = data?.token;
 
     if (token) {
-      localStorage.setItem("token", token);
+      guardarToken(token);
     }
 
     const rawUser = data?.user || data;
@@ -83,15 +105,11 @@ export function AuthProvider({ children }) {
   const signup = async (data) => {
     try {
       setErrors([]);
-
       const res = await registerRequest(data);
       setSessionFromResponse(res.data);
-
       return res.data;
     } catch (error) {
-      const mensajes =
-        error.response?.data?.message || ["Error al registrarse"];
-
+      const mensajes = error.response?.data?.message || ["Error al registrarse"];
       setErrors(Array.isArray(mensajes) ? mensajes : [mensajes]);
       throw error;
     }
@@ -100,15 +118,12 @@ export function AuthProvider({ children }) {
   const signin = async (data) => {
     try {
       setErrors([]);
-
       const res = await loginRequest(data);
       setSessionFromResponse(res.data);
-
       return res.data;
     } catch (error) {
       const mensajes =
         error.response?.data?.message || ["Error al iniciar sesión"];
-
       setErrors(Array.isArray(mensajes) ? mensajes : [mensajes]);
       throw error;
     }
@@ -127,16 +142,18 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const checkLogin = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const magicUserRaw = localStorage.getItem("usuario_magic_link");
+        const token = obtenerToken();
+        const magicUserRaw =
+          localStorage.getItem("usuario_magic_link") ||
+          sessionStorage.getItem("usuario_magic_link");
 
         if (!token) {
           limpiarSesion();
           return;
         }
 
-        // LINK MÁGICO:
-        // si ya tenemos usuario guardado del link, entramos sin pedir profile
+        guardarToken(token);
+
         if (magicUserRaw) {
           const magicUser = JSON.parse(magicUserRaw);
           aplicarSesion(normalizarUsuario(magicUser));
