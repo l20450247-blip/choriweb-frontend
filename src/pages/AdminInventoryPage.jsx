@@ -1,21 +1,25 @@
 // src/pages/AdminInventoryPage.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import api from "../api/axiosInstance";
 
 function AdminInventoryPage() {
   const [inventario, setInventario] = useState([]);
   const [movimientos, setMovimientos] = useState([]);
+  const [productoSeleccionadoId, setProductoSeleccionadoId] = useState("");
+
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
-  const [entradaForm, setEntradaForm] = useState({});
-  const [ajusteForm, setAjusteForm] = useState({});
-  const [minimoForm, setMinimoForm] = useState({});
+  const [minimo, setMinimo] = useState("");
+  const [entradaCantidad, setEntradaCantidad] = useState("");
+  const [entradaMotivo, setEntradaMotivo] = useState("");
+  const [ajusteStock, setAjusteStock] = useState("");
+  const [ajusteMotivo, setAjusteMotivo] = useState("");
 
-  const [loadingEntrada, setLoadingEntrada] = useState({});
-  const [loadingAjuste, setLoadingAjuste] = useState({});
-  const [loadingMinimo, setLoadingMinimo] = useState({});
+  const [savingMinimo, setSavingMinimo] = useState(false);
+  const [savingEntrada, setSavingEntrada] = useState(false);
+  const [savingAjuste, setSavingAjuste] = useState(false);
 
   const formatKg = (n) => `${Number(n || 0)} kg`;
 
@@ -33,16 +37,19 @@ function AdminInventoryPage() {
     });
   };
 
+  const productoSeleccionado = useMemo(() => {
+    return inventario.find((item) => item.producto?._id === productoSeleccionadoId);
+  }, [inventario, productoSeleccionadoId]);
+
   const getInventory = async () => {
     const res = await api.get("/inventario");
-    setInventario(res.data || []);
+    const data = res.data || [];
+    setInventario(data);
 
-    const nuevosMinimos = {};
-    (res.data || []).forEach((item) => {
-      nuevosMinimos[item.producto._id] = item.stockMinimo ?? 0;
-    });
-
-    setMinimoForm(nuevosMinimos);
+    if (!productoSeleccionadoId && data.length > 0) {
+      setProductoSeleccionadoId(data[0].producto?._id || "");
+      setMinimo(data[0].stockMinimo ?? 0);
+    }
   };
 
   const getMovimientos = async () => {
@@ -69,67 +76,77 @@ function AdminInventoryPage() {
 
   useEffect(() => {
     cargarDatos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (!successMsg) return;
-
     const timer = setTimeout(() => setSuccessMsg(""), 3000);
     return () => clearTimeout(timer);
   }, [successMsg]);
 
-  const handleEntradaChange = (productoId, field, value) => {
-    setEntradaForm((prev) => ({
-      ...prev,
-      [productoId]: {
-        ...prev[productoId],
-        [field]: value,
-      },
-    }));
-  };
+  useEffect(() => {
+    if (!productoSeleccionado) return;
+    setMinimo(productoSeleccionado.stockMinimo ?? 0);
+    setEntradaCantidad("");
+    setEntradaMotivo("");
+    setAjusteStock("");
+    setAjusteMotivo("");
+  }, [productoSeleccionado]);
 
-  const handleAjusteChange = (productoId, field, value) => {
-    setAjusteForm((prev) => ({
-      ...prev,
-      [productoId]: {
-        ...prev[productoId],
-        [field]: value,
-      },
-    }));
-  };
+  const handleGuardarMinimo = async () => {
+    if (!productoSeleccionadoId) return;
 
-  const handleMinimoChange = (productoId, value) => {
-    setMinimoForm((prev) => ({
-      ...prev,
-      [productoId]: value,
-    }));
-  };
-
-  const handleAgregarStock = async (productoId) => {
     try {
       setErrorMsg("");
       setSuccessMsg("");
-      setLoadingEntrada((prev) => ({ ...prev, [productoId]: true }));
+      setSavingMinimo(true);
 
-      const cantidad = entradaForm[productoId]?.cantidad || "";
-      const motivo = entradaForm[productoId]?.motivo || "";
+      if (minimo === "" || minimo == null || Number(minimo) < 0) {
+        setErrorMsg("El stock mínimo debe ser mayor o igual a 0 kg.");
+        return;
+      }
 
-      if (!cantidad || Number(cantidad) <= 0) {
+      await api.put(`/inventario/${productoSeleccionadoId}/minimo`, {
+        stockMinimo: Number(minimo),
+      });
+
+      setSuccessMsg("Stock mínimo actualizado correctamente.");
+      await getInventory();
+    } catch (error) {
+      console.error("Error al actualizar mínimo:", error);
+      setErrorMsg(
+        error?.response?.data?.message?.[0] ||
+          error?.response?.data?.message ||
+          "No se pudo actualizar el stock mínimo"
+      );
+    } finally {
+      setSavingMinimo(false);
+    }
+  };
+
+  const handleAgregarStock = async () => {
+    if (!productoSeleccionadoId) return;
+
+    try {
+      setErrorMsg("");
+      setSuccessMsg("");
+      setSavingEntrada(true);
+
+      if (!entradaCantidad || Number(entradaCantidad) <= 0) {
         setErrorMsg("La cantidad para agregar stock debe ser mayor a 0 kg.");
         return;
       }
 
       await api.post("/inventario/entrada", {
-        productoId,
-        cantidad: Number(cantidad),
-        motivo: motivo || "Entrada manual desde inventario",
+        productoId: productoSeleccionadoId,
+        cantidad: Number(entradaCantidad),
+        motivo: entradaMotivo || "Entrada manual desde inventario",
       });
 
       setSuccessMsg("Stock agregado correctamente.");
-      setEntradaForm((prev) => ({
-        ...prev,
-        [productoId]: { cantidad: "", motivo: "" },
-      }));
+      setEntradaCantidad("");
+      setEntradaMotivo("");
 
       await Promise.all([getInventory(), getMovimientos()]);
     } catch (error) {
@@ -137,39 +154,35 @@ function AdminInventoryPage() {
       setErrorMsg(
         error?.response?.data?.message?.[0] ||
           error?.response?.data?.message ||
-          error?.message ||
           "No se pudo agregar stock"
       );
     } finally {
-      setLoadingEntrada((prev) => ({ ...prev, [productoId]: false }));
+      setSavingEntrada(false);
     }
   };
 
-  const handleAjustarStock = async (productoId) => {
+  const handleAjustarStock = async () => {
+    if (!productoSeleccionadoId) return;
+
     try {
       setErrorMsg("");
       setSuccessMsg("");
-      setLoadingAjuste((prev) => ({ ...prev, [productoId]: true }));
+      setSavingAjuste(true);
 
-      const nuevoStock = ajusteForm[productoId]?.nuevoStock || "";
-      const motivo = ajusteForm[productoId]?.motivo || "";
-
-      if (nuevoStock === "" || Number(nuevoStock) < 0) {
-        setErrorMsg("El nuevo stock debe ser un número mayor o igual a 0 kg.");
+      if (ajusteStock === "" || Number(ajusteStock) < 0) {
+        setErrorMsg("El nuevo stock debe ser mayor o igual a 0 kg.");
         return;
       }
 
       await api.post("/inventario/ajuste", {
-        productoId,
-        nuevoStock: Number(nuevoStock),
-        motivo: motivo || "Ajuste manual desde inventario",
+        productoId: productoSeleccionadoId,
+        nuevoStock: Number(ajusteStock),
+        motivo: ajusteMotivo || "Ajuste manual desde inventario",
       });
 
       setSuccessMsg("Inventario ajustado correctamente.");
-      setAjusteForm((prev) => ({
-        ...prev,
-        [productoId]: { nuevoStock: "", motivo: "" },
-      }));
+      setAjusteStock("");
+      setAjusteMotivo("");
 
       await Promise.all([getInventory(), getMovimientos()]);
     } catch (error) {
@@ -177,43 +190,10 @@ function AdminInventoryPage() {
       setErrorMsg(
         error?.response?.data?.message?.[0] ||
           error?.response?.data?.message ||
-          error?.message ||
           "No se pudo ajustar el inventario"
       );
     } finally {
-      setLoadingAjuste((prev) => ({ ...prev, [productoId]: false }));
-    }
-  };
-
-  const handleGuardarMinimo = async (productoId) => {
-    try {
-      setErrorMsg("");
-      setSuccessMsg("");
-      setLoadingMinimo((prev) => ({ ...prev, [productoId]: true }));
-
-      const stockMinimo = minimoForm[productoId];
-
-      if (stockMinimo === "" || stockMinimo == null || Number(stockMinimo) < 0) {
-        setErrorMsg("El stock mínimo debe ser un número mayor o igual a 0 kg.");
-        return;
-      }
-
-      await api.put(`/inventario/${productoId}/minimo`, {
-        stockMinimo: Number(stockMinimo),
-      });
-
-      setSuccessMsg("Stock mínimo actualizado correctamente.");
-      await getInventory();
-    } catch (error) {
-      console.error("Error al actualizar stock mínimo:", error);
-      setErrorMsg(
-        error?.response?.data?.message?.[0] ||
-          error?.response?.data?.message ||
-          error?.message ||
-          "No se pudo actualizar el stock mínimo"
-      );
-    } finally {
-      setLoadingMinimo((prev) => ({ ...prev, [productoId]: false }));
+      setSavingAjuste(false);
     }
   };
 
@@ -240,16 +220,7 @@ function AdminInventoryPage() {
   return (
     <div className="min-h-screen bg-slate-900 text-white px-3 sm:px-4 md:px-6 py-5 md:py-8">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-6 bg-slate-800/70 border border-slate-700 rounded-2xl p-4 sm:p-6 shadow-lg">
-          <h1 className="text-3xl sm:text-4xl font-extrabold mb-2">
-            Inventario
-          </h1>
-
-          <p className="text-slate-300 text-sm sm:text-base">
-            Consulta y administra el stock actual de los productos registrados
-            en kilogramos.
-          </p>
-        </div>
+        <Header />
 
         {errorMsg && (
           <div className="mb-4 rounded-xl bg-red-500/20 border border-red-500/60 p-4 text-red-200 shadow-lg text-sm">
@@ -268,424 +239,494 @@ function AdminInventoryPage() {
             No hay productos en inventario todavía.
           </div>
         ) : (
-          <div className="space-y-8">
-            <div className="hidden md:block overflow-x-auto rounded-2xl border border-slate-700 shadow-lg">
-              <table className="min-w-[850px] w-full bg-slate-800 text-white">
-                <thead>
-                  <tr className="bg-slate-700 text-left">
-                    <th className="p-4">Producto</th>
-                    <th className="p-4">Stock actual</th>
-                    <th className="p-4">Stock mínimo</th>
-                    <th className="p-4">Estado</th>
-                    <th className="p-4">Última actualización</th>
-                  </tr>
-                </thead>
+          <div className="space-y-6">
+            <InventarioDesktop
+              inventario={inventario}
+              formatKg={formatKg}
+              formatFecha={formatFecha}
+            />
 
-                <tbody>
-                  {inventario.map((item) => {
-                    const stockBajo = item.stockActual <= item.stockMinimo;
+            <InventarioMobile
+              inventario={inventario}
+              productoSeleccionadoId={productoSeleccionadoId}
+              setProductoSeleccionadoId={setProductoSeleccionadoId}
+              formatKg={formatKg}
+              formatFecha={formatFecha}
+            />
 
-                    return (
-                      <tr
-                        key={item._id}
-                        className="border-b border-slate-700 hover:bg-slate-700/40 transition"
-                      >
-                        <td className="p-4 font-semibold text-base md:text-lg">
-                          {item.producto?.nombre || "Sin nombre"}
-                        </td>
+            <PanelAcciones
+              inventario={inventario}
+              productoSeleccionado={productoSeleccionado}
+              productoSeleccionadoId={productoSeleccionadoId}
+              setProductoSeleccionadoId={setProductoSeleccionadoId}
+              minimo={minimo}
+              setMinimo={setMinimo}
+              entradaCantidad={entradaCantidad}
+              setEntradaCantidad={setEntradaCantidad}
+              entradaMotivo={entradaMotivo}
+              setEntradaMotivo={setEntradaMotivo}
+              ajusteStock={ajusteStock}
+              setAjusteStock={setAjusteStock}
+              ajusteMotivo={ajusteMotivo}
+              setAjusteMotivo={setAjusteMotivo}
+              handleGuardarMinimo={handleGuardarMinimo}
+              handleAgregarStock={handleAgregarStock}
+              handleAjustarStock={handleAjustarStock}
+              savingMinimo={savingMinimo}
+              savingEntrada={savingEntrada}
+              savingAjuste={savingAjuste}
+              formatKg={formatKg}
+            />
 
-                        <td className="p-4">
-                          <span
-                            className={`text-xl md:text-2xl font-bold ${
-                              stockBajo ? "text-red-400" : "text-emerald-400"
-                            }`}
-                          >
-                            {formatKg(item.stockActual)}
-                          </span>
-                        </td>
-
-                        <td className="p-4 text-base md:text-lg">
-                          {formatKg(item.stockMinimo)}
-                        </td>
-
-                        <td className="p-4">
-                          <StockBadge stockBajo={stockBajo} />
-                        </td>
-
-                        <td className="p-4 text-slate-300">
-                          {formatFecha(item.updatedAt)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="md:hidden space-y-3">
-              {inventario.map((item) => {
-                const stockBajo = item.stockActual <= item.stockMinimo;
-
-                return (
-                  <div
-                    key={item._id}
-                    className="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-lg"
-                  >
-                    <div className="flex items-start justify-between gap-3 mb-4">
-                      <div>
-                        <p className="text-xs text-slate-400">Producto</p>
-                        <h2 className="text-xl font-extrabold text-white leading-tight">
-                          {item.producto?.nombre || "Sin nombre"}
-                        </h2>
-                      </div>
-
-                      <StockBadge stockBajo={stockBajo} />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-slate-900 rounded-xl p-3 border border-slate-700">
-                        <p className="text-xs text-slate-400 mb-1">
-                          Stock actual
-                        </p>
-                        <p
-                          className={`text-2xl font-extrabold ${
-                            stockBajo ? "text-red-400" : "text-emerald-400"
-                          }`}
-                        >
-                          {formatKg(item.stockActual)}
-                        </p>
-                      </div>
-
-                      <div className="bg-slate-900 rounded-xl p-3 border border-slate-700">
-                        <p className="text-xs text-slate-400 mb-1">
-                          Stock mínimo
-                        </p>
-                        <p className="text-2xl font-extrabold text-white">
-                          {formatKg(item.stockMinimo)}
-                        </p>
-                      </div>
-                    </div>
-
-                    <p className="text-xs text-slate-500 mt-3">
-                      Última actualización: {formatFecha(item.updatedAt)}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {inventario.map((item) => {
-                const stockBajo = item.stockActual <= item.stockMinimo;
-
-                return (
-                  <div
-                    key={item._id}
-                    className="bg-slate-800 border border-slate-700 rounded-2xl p-4 md:p-5 shadow-lg"
-                  >
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-                      <div>
-                        <h2 className="text-xl md:text-2xl font-bold text-white">
-                          {item.producto?.nombre || "Sin nombre"}
-                        </h2>
-
-                        <p className="text-slate-400 mt-1 text-sm">
-                          Última actualización: {formatFecha(item.updatedAt)}
-                        </p>
-                      </div>
-
-                      <StockBadge stockBajo={stockBajo} />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
-                      <div className="bg-slate-900 rounded-xl p-4 border border-slate-700">
-                        <p className="text-slate-400 text-sm mb-1">
-                          Stock actual
-                        </p>
-
-                        <p
-                          className={`text-2xl md:text-3xl font-bold ${
-                            stockBajo ? "text-red-400" : "text-emerald-400"
-                          }`}
-                        >
-                          {formatKg(item.stockActual)}
-                        </p>
-                      </div>
-
-                      <div className="bg-slate-900 rounded-xl p-4 border border-slate-700">
-                        <p className="text-slate-400 text-sm mb-1">
-                          Stock mínimo
-                        </p>
-
-                        <p className="text-2xl md:text-3xl font-bold text-white">
-                          {formatKg(item.stockMinimo)}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="mb-4 bg-slate-900 rounded-xl p-4 border border-slate-700 shadow">
-                      <h3 className="font-bold text-violet-400 mb-3 text-lg">
-                        Stock mínimo
-                      </h3>
-
-                      <div className="flex flex-col md:flex-row gap-3">
-                        <input
-                          type="number"
-                          min="0"
-                          placeholder="Stock mínimo en kg"
-                          value={minimoForm[item.producto._id] ?? ""}
-                          onChange={(e) =>
-                            handleMinimoChange(
-                              item.producto._id,
-                              e.target.value
-                            )
-                          }
-                          className="w-full rounded-xl bg-slate-800 border border-slate-700 text-white px-4 py-3 outline-none focus:ring-2 focus:ring-violet-400"
-                        />
-
-                        <button
-                          onClick={() => handleGuardarMinimo(item.producto._id)}
-                          disabled={loadingMinimo[item.producto._id]}
-                          className="w-full md:w-auto bg-violet-500 hover:bg-violet-600 disabled:opacity-60 text-white font-bold px-5 py-3 rounded-xl transition min-h-[50px]"
-                        >
-                          {loadingMinimo[item.producto._id]
-                            ? "Guardando..."
-                            : "Guardar mínimo"}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="bg-slate-900 rounded-xl p-4 border border-slate-700 shadow">
-                        <h3 className="font-bold text-amber-400 mb-3 text-lg">
-                          Agregar stock
-                        </h3>
-
-                        <input
-                          type="number"
-                          min="1"
-                          step="0.5"
-                          placeholder="Cantidad en kg"
-                          value={
-                            entradaForm[item.producto._id]?.cantidad || ""
-                          }
-                          onChange={(e) =>
-                            handleEntradaChange(
-                              item.producto._id,
-                              "cantidad",
-                              e.target.value
-                            )
-                          }
-                          className="w-full mb-3 rounded-xl bg-slate-800 border border-slate-700 text-white px-4 py-3 outline-none focus:ring-2 focus:ring-emerald-400"
-                        />
-
-                        <input
-                          type="text"
-                          placeholder="Motivo"
-                          value={entradaForm[item.producto._id]?.motivo || ""}
-                          onChange={(e) =>
-                            handleEntradaChange(
-                              item.producto._id,
-                              "motivo",
-                              e.target.value
-                            )
-                          }
-                          className="w-full mb-3 rounded-xl bg-slate-800 border border-slate-700 text-white px-4 py-3 outline-none focus:ring-2 focus:ring-emerald-400"
-                        />
-
-                        <button
-                          onClick={() => handleAgregarStock(item.producto._id)}
-                          disabled={loadingEntrada[item.producto._id]}
-                          className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-white font-bold py-3 rounded-xl transition min-h-[50px]"
-                        >
-                          {loadingEntrada[item.producto._id]
-                            ? "Agregando..."
-                            : "Agregar"}
-                        </button>
-                      </div>
-
-                      <div className="bg-slate-900 rounded-xl p-4 border border-slate-700 shadow">
-                        <h3 className="font-bold text-sky-400 mb-3 text-lg">
-                          Ajustar stock
-                        </h3>
-
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.5"
-                          placeholder="Nuevo stock en kg"
-                          value={
-                            ajusteForm[item.producto._id]?.nuevoStock || ""
-                          }
-                          onChange={(e) =>
-                            handleAjusteChange(
-                              item.producto._id,
-                              "nuevoStock",
-                              e.target.value
-                            )
-                          }
-                          className="w-full mb-3 rounded-xl bg-slate-800 border border-slate-700 text-white px-4 py-3 outline-none focus:ring-2 focus:ring-sky-400"
-                        />
-
-                        <input
-                          type="text"
-                          placeholder="Motivo"
-                          value={ajusteForm[item.producto._id]?.motivo || ""}
-                          onChange={(e) =>
-                            handleAjusteChange(
-                              item.producto._id,
-                              "motivo",
-                              e.target.value
-                            )
-                          }
-                          className="w-full mb-3 rounded-xl bg-slate-800 border border-slate-700 text-white px-4 py-3 outline-none focus:ring-2 focus:ring-sky-400"
-                        />
-
-                        <button
-                          onClick={() => handleAjustarStock(item.producto._id)}
-                          disabled={loadingAjuste[item.producto._id]}
-                          className="w-full bg-sky-500 hover:bg-sky-600 disabled:opacity-60 text-white font-bold py-3 rounded-xl transition min-h-[50px]"
-                        >
-                          {loadingAjuste[item.producto._id]
-                            ? "Ajustando..."
-                            : "Ajustar"}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="bg-slate-800 border border-slate-700 rounded-2xl p-4 md:p-5 shadow-lg">
-              <div className="mb-4">
-                <h2 className="text-xl md:text-2xl font-bold text-white">
-                  Movimientos de inventario
-                </h2>
-
-                <p className="text-slate-400 mt-1 text-sm md:text-base">
-                  Historial de entradas, salidas y ajustes en kilogramos.
-                </p>
-              </div>
-
-              {movimientos.length === 0 ? (
-                <div className="bg-slate-900 rounded-xl p-4 text-slate-300 border border-slate-700">
-                  No hay movimientos registrados todavía.
-                </div>
-              ) : (
-                <>
-                  <div className="hidden md:block overflow-x-auto rounded-xl border border-slate-700 max-h-[420px] overflow-y-auto">
-                    <table className="min-w-[900px] w-full bg-slate-900 text-white">
-                      <thead className="sticky top-0 bg-slate-700">
-                        <tr className="text-left">
-                          <th className="p-4">Producto</th>
-                          <th className="p-4">Tipo</th>
-                          <th className="p-4">Cantidad</th>
-                          <th className="p-4">Motivo</th>
-                          <th className="p-4">Usuario</th>
-                          <th className="p-4">Fecha</th>
-                        </tr>
-                      </thead>
-
-                      <tbody>
-                        {movimientos.map((mov) => (
-                          <tr
-                            key={mov._id}
-                            className="border-b border-slate-700 hover:bg-slate-700/30 transition"
-                          >
-                            <td className="p-4 font-medium">
-                              {mov.producto?.nombre || "Sin producto"}
-                            </td>
-
-                            <td className="p-4">
-                              <span
-                                className={`px-3 py-1 rounded-full text-sm font-semibold border ${getTipoClase(
-                                  mov.tipo
-                                )}`}
-                              >
-                                {mov.tipo}
-                              </span>
-                            </td>
-
-                            <td className="p-4 font-semibold">
-                              {formatKg(mov.cantidad)}
-                            </td>
-
-                            <td className="p-4 text-slate-300">
-                              {mov.motivo || "Sin motivo"}
-                            </td>
-
-                            <td className="p-4 text-slate-300">
-                              {mov.usuario?.nombre || "Sin usuario"}
-                            </td>
-
-                            <td className="p-4 text-slate-300">
-                              {formatFecha(mov.createdAt)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div className="md:hidden space-y-3">
-                    {movimientos.map((mov) => (
-                      <div
-                        key={mov._id}
-                        className="bg-slate-900 border border-slate-700 rounded-2xl p-4"
-                      >
-                        <div className="flex items-start justify-between gap-3 mb-3">
-                          <div>
-                            <p className="text-xs text-slate-400">Producto</p>
-                            <h3 className="font-bold text-white">
-                              {mov.producto?.nombre || "Sin producto"}
-                            </h3>
-                          </div>
-
-                          <span
-                            className={`px-3 py-1 rounded-full text-xs font-bold border ${getTipoClase(
-                              mov.tipo
-                            )}`}
-                          >
-                            {mov.tipo}
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3 mb-3">
-                          <div className="bg-slate-800 border border-slate-700 rounded-xl p-3">
-                            <p className="text-xs text-slate-400">Cantidad</p>
-                            <p className="font-extrabold text-amber-400">
-                              {formatKg(mov.cantidad)}
-                            </p>
-                          </div>
-
-                          <div className="bg-slate-800 border border-slate-700 rounded-xl p-3">
-                            <p className="text-xs text-slate-400">Usuario</p>
-                            <p className="font-semibold text-slate-200">
-                              {mov.usuario?.nombre || "Sin usuario"}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 mb-3">
-                          <p className="text-xs text-slate-400">Motivo</p>
-                          <p className="text-sm text-slate-200">
-                            {mov.motivo || "Sin motivo"}
-                          </p>
-                        </div>
-
-                        <p className="text-xs text-slate-500">
-                          {formatFecha(mov.createdAt)}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
+            <Movimientos
+              movimientos={movimientos}
+              getTipoClase={getTipoClase}
+              formatKg={formatKg}
+              formatFecha={formatFecha}
+            />
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function Header() {
+  return (
+    <div className="mb-5 bg-slate-800/70 border border-slate-700 rounded-2xl p-4 sm:p-6 shadow-lg">
+      <h1 className="text-3xl sm:text-4xl font-extrabold mb-2">Inventario</h1>
+      <p className="text-slate-300 text-sm sm:text-base">
+        Consulta stock, agrega entradas, ajusta cantidades y revisa movimientos.
+      </p>
+    </div>
+  );
+}
+
+function InventarioDesktop({ inventario, formatKg, formatFecha }) {
+  return (
+    <div className="hidden md:block overflow-x-auto rounded-2xl border border-slate-700 shadow-lg">
+      <table className="min-w-[850px] w-full bg-slate-800 text-white">
+        <thead>
+          <tr className="bg-slate-700 text-left">
+            <th className="p-4">Producto</th>
+            <th className="p-4">Stock actual</th>
+            <th className="p-4">Stock mínimo</th>
+            <th className="p-4">Estado</th>
+            <th className="p-4">Última actualización</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {inventario.map((item) => {
+            const stockBajo = item.stockActual <= item.stockMinimo;
+
+            return (
+              <tr
+                key={item._id}
+                className="border-b border-slate-700 hover:bg-slate-700/40 transition"
+              >
+                <td className="p-4 font-semibold text-lg">
+                  {item.producto?.nombre || "Sin nombre"}
+                </td>
+
+                <td className="p-4">
+                  <span
+                    className={`text-2xl font-bold ${
+                      stockBajo ? "text-red-400" : "text-emerald-400"
+                    }`}
+                  >
+                    {formatKg(item.stockActual)}
+                  </span>
+                </td>
+
+                <td className="p-4 text-lg">{formatKg(item.stockMinimo)}</td>
+
+                <td className="p-4">
+                  <StockBadge stockBajo={stockBajo} />
+                </td>
+
+                <td className="p-4 text-slate-300">{formatFecha(item.updatedAt)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function InventarioMobile({
+  inventario,
+  productoSeleccionadoId,
+  setProductoSeleccionadoId,
+  formatKg,
+  formatFecha,
+}) {
+  return (
+    <div className="md:hidden space-y-3">
+      <div className="bg-slate-800/80 border border-slate-700 rounded-2xl p-4">
+        <h2 className="text-xl font-extrabold mb-1">Resumen de productos</h2>
+        <p className="text-slate-400 text-sm">
+          Toca un producto para administrarlo abajo.
+        </p>
+      </div>
+
+      {inventario.map((item) => {
+        const id = item.producto?._id;
+        const activo = id === productoSeleccionadoId;
+        const stockBajo = item.stockActual <= item.stockMinimo;
+
+        return (
+          <button
+            key={item._id}
+            type="button"
+            onClick={() => setProductoSeleccionadoId(id)}
+            className={`w-full text-left rounded-2xl p-4 border shadow-lg transition ${
+              activo
+                ? "bg-slate-800 border-amber-400"
+                : "bg-slate-800/80 border-slate-700"
+            }`}
+          >
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <p className="text-xs text-slate-400">Producto</p>
+                <h3 className="text-xl font-extrabold leading-tight">
+                  {item.producto?.nombre || "Sin nombre"}
+                </h3>
+              </div>
+
+              <StockBadge stockBajo={stockBajo} />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-slate-900 rounded-xl p-3 border border-slate-700">
+                <p className="text-xs text-slate-400">Stock actual</p>
+                <p
+                  className={`text-2xl font-extrabold ${
+                    stockBajo ? "text-red-400" : "text-emerald-400"
+                  }`}
+                >
+                  {formatKg(item.stockActual)}
+                </p>
+              </div>
+
+              <div className="bg-slate-900 rounded-xl p-3 border border-slate-700">
+                <p className="text-xs text-slate-400">Stock mínimo</p>
+                <p className="text-2xl font-extrabold text-white">
+                  {formatKg(item.stockMinimo)}
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-500 mt-3">
+              Última actualización: {formatFecha(item.updatedAt)}
+            </p>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function PanelAcciones({
+  inventario,
+  productoSeleccionado,
+  productoSeleccionadoId,
+  setProductoSeleccionadoId,
+  minimo,
+  setMinimo,
+  entradaCantidad,
+  setEntradaCantidad,
+  entradaMotivo,
+  setEntradaMotivo,
+  ajusteStock,
+  setAjusteStock,
+  ajusteMotivo,
+  setAjusteMotivo,
+  handleGuardarMinimo,
+  handleAgregarStock,
+  handleAjustarStock,
+  savingMinimo,
+  savingEntrada,
+  savingAjuste,
+  formatKg,
+}) {
+  const stockBajo =
+    productoSeleccionado?.stockActual <= productoSeleccionado?.stockMinimo;
+
+  return (
+    <div className="bg-slate-800 border border-slate-700 rounded-2xl p-4 md:p-5 shadow-lg">
+      <div className="mb-4">
+        <h2 className="text-xl md:text-2xl font-extrabold text-white">
+          Administrar inventario
+        </h2>
+        <p className="text-slate-400 text-sm mt-1">
+          Selecciona un producto y aplica la acción necesaria.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-5">
+        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4">
+          <label className="block text-sm font-bold text-slate-300 mb-2">
+            Producto seleccionado
+          </label>
+
+          <select
+            value={productoSeleccionadoId}
+            onChange={(e) => setProductoSeleccionadoId(e.target.value)}
+            className="w-full rounded-xl bg-slate-800 border border-slate-700 text-white px-4 py-3 outline-none focus:ring-2 focus:ring-amber-400"
+          >
+            {inventario.map((item) => (
+              <option key={item._id} value={item.producto?._id}>
+                {item.producto?.nombre || "Sin nombre"}
+              </option>
+            ))}
+          </select>
+
+          {productoSeleccionado && (
+            <div className="mt-4 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-2xl font-extrabold">
+                  {productoSeleccionado.producto?.nombre || "Sin nombre"}
+                </h3>
+                <StockBadge stockBajo={stockBajo} />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-slate-800 border border-slate-700 rounded-xl p-3">
+                  <p className="text-xs text-slate-400">Actual</p>
+                  <p
+                    className={`text-2xl font-extrabold ${
+                      stockBajo ? "text-red-400" : "text-emerald-400"
+                    }`}
+                  >
+                    {formatKg(productoSeleccionado.stockActual)}
+                  </p>
+                </div>
+
+                <div className="bg-slate-800 border border-slate-700 rounded-xl p-3">
+                  <p className="text-xs text-slate-400">Mínimo</p>
+                  <p className="text-2xl font-extrabold text-white">
+                    {formatKg(productoSeleccionado.stockMinimo)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+          <ActionCard title="Stock mínimo" color="violet">
+            <input
+              type="number"
+              min="0"
+              placeholder="Ej. 30"
+              value={minimo}
+              onChange={(e) => setMinimo(e.target.value)}
+              className="input-inv"
+            />
+
+            <button
+              type="button"
+              onClick={handleGuardarMinimo}
+              disabled={savingMinimo}
+              className="btn-inv bg-violet-500 hover:bg-violet-600"
+            >
+              {savingMinimo ? "Guardando..." : "Guardar mínimo"}
+            </button>
+          </ActionCard>
+
+          <ActionCard title="Agregar stock" color="amber">
+            <input
+              type="number"
+              min="1"
+              step="0.5"
+              placeholder="Cantidad en kg"
+              value={entradaCantidad}
+              onChange={(e) => setEntradaCantidad(e.target.value)}
+              className="input-inv"
+            />
+
+            <input
+              type="text"
+              placeholder="Motivo"
+              value={entradaMotivo}
+              onChange={(e) => setEntradaMotivo(e.target.value)}
+              className="input-inv"
+            />
+
+            <button
+              type="button"
+              onClick={handleAgregarStock}
+              disabled={savingEntrada}
+              className="btn-inv bg-emerald-500 hover:bg-emerald-600"
+            >
+              {savingEntrada ? "Agregando..." : "Agregar"}
+            </button>
+          </ActionCard>
+
+          <ActionCard title="Ajustar stock" color="sky">
+            <input
+              type="number"
+              min="0"
+              step="0.5"
+              placeholder="Nuevo stock en kg"
+              value={ajusteStock}
+              onChange={(e) => setAjusteStock(e.target.value)}
+              className="input-inv"
+            />
+
+            <input
+              type="text"
+              placeholder="Motivo"
+              value={ajusteMotivo}
+              onChange={(e) => setAjusteMotivo(e.target.value)}
+              className="input-inv"
+            />
+
+            <button
+              type="button"
+              onClick={handleAjustarStock}
+              disabled={savingAjuste}
+              className="btn-inv bg-sky-500 hover:bg-sky-600"
+            >
+              {savingAjuste ? "Ajustando..." : "Ajustar"}
+            </button>
+          </ActionCard>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ActionCard({ title, color, children }) {
+  const colorClass =
+    color === "violet"
+      ? "text-violet-400"
+      : color === "amber"
+      ? "text-amber-400"
+      : "text-sky-400";
+
+  return (
+    <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 space-y-3">
+      <h3 className={`text-xl font-extrabold ${colorClass}`}>{title}</h3>
+      {children}
+    </div>
+  );
+}
+
+function Movimientos({ movimientos, getTipoClase, formatKg, formatFecha }) {
+  return (
+    <div className="bg-slate-800 border border-slate-700 rounded-2xl p-4 md:p-5 shadow-lg">
+      <div className="mb-4">
+        <h2 className="text-xl md:text-2xl font-extrabold text-white">
+          Movimientos de inventario
+        </h2>
+        <p className="text-slate-400 mt-1 text-sm md:text-base">
+          Últimos registros de entradas, salidas y ajustes.
+        </p>
+      </div>
+
+      {movimientos.length === 0 ? (
+        <div className="bg-slate-900 rounded-xl p-4 text-slate-300 border border-slate-700">
+          No hay movimientos registrados todavía.
+        </div>
+      ) : (
+        <>
+          <div className="hidden md:block overflow-x-auto rounded-xl border border-slate-700 max-h-[420px] overflow-y-auto">
+            <table className="min-w-[900px] w-full bg-slate-900 text-white">
+              <thead className="sticky top-0 bg-slate-700">
+                <tr className="text-left">
+                  <th className="p-4">Producto</th>
+                  <th className="p-4">Tipo</th>
+                  <th className="p-4">Cantidad</th>
+                  <th className="p-4">Motivo</th>
+                  <th className="p-4">Usuario</th>
+                  <th className="p-4">Fecha</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {movimientos.map((mov) => (
+                  <tr
+                    key={mov._id}
+                    className="border-b border-slate-700 hover:bg-slate-700/30 transition"
+                  >
+                    <td className="p-4 font-medium">
+                      {mov.producto?.nombre || "Sin producto"}
+                    </td>
+
+                    <td className="p-4">
+                      <span
+                        className={`px-3 py-1 rounded-full text-sm font-semibold border ${getTipoClase(
+                          mov.tipo
+                        )}`}
+                      >
+                        {mov.tipo}
+                      </span>
+                    </td>
+
+                    <td className="p-4 font-semibold">{formatKg(mov.cantidad)}</td>
+
+                    <td className="p-4 text-slate-300">
+                      {mov.motivo || "Sin motivo"}
+                    </td>
+
+                    <td className="p-4 text-slate-300">
+                      {mov.usuario?.nombre || "Sin usuario"}
+                    </td>
+
+                    <td className="p-4 text-slate-300">
+                      {formatFecha(mov.createdAt)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="md:hidden space-y-2">
+            {movimientos.slice(0, 12).map((mov) => (
+              <div
+                key={mov._id}
+                className="bg-slate-900 border border-slate-700 rounded-2xl p-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-white truncate">
+                      {mov.producto?.nombre || "Sin producto"}
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1">
+                      {formatFecha(mov.createdAt)}
+                    </p>
+                  </div>
+
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-bold border ${getTipoClase(
+                      mov.tipo
+                    )}`}
+                  >
+                    {mov.tipo}
+                  </span>
+                </div>
+
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs text-slate-400">Cantidad</p>
+                    <p className="text-lg font-extrabold text-amber-400">
+                      {formatKg(mov.cantidad)}
+                    </p>
+                  </div>
+
+                  <p className="text-xs text-slate-500 text-right max-w-[55%] line-clamp-2">
+                    {mov.motivo || "Sin motivo"}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
