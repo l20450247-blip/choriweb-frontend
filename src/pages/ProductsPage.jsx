@@ -44,8 +44,13 @@ export default function ProductsPage() {
       </div>
 
       {loading && (
-        <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 text-center text-slate-300">
-          Cargando productos...
+        <div className="grid gap-3 sm:gap-5 lg:gap-6 grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-80 rounded-3xl bg-slate-800/80 border border-slate-700 animate-pulse"
+            />
+          ))}
         </div>
       )}
 

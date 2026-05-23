@@ -1,10 +1,12 @@
 // src/components/ProductCard.jsx
 import { useState } from "react";
+import { FaShoppingCart, FaCheck } from "react-icons/fa";
 import { useCart } from "../context/CartContext.jsx";
 
 export default function ProductCard({ product, canBuy = true, compact = false }) {
   const { addToCart, loading } = useCart();
   const [cantidad, setCantidad] = useState(1);
+  const [added, setAdded] = useState(false);
 
   if (!product) return null;
 
@@ -50,7 +52,13 @@ export default function ProductCard({ product, canBuy = true, compact = false })
     if (cantNum <= 0) return;
 
     await addToCart(_id, cantNum);
+
+    setAdded(true);
     setCantidad(1);
+
+    setTimeout(() => {
+      setAdded(false);
+    }, 1200);
   };
 
   const formatMXN = (n) =>
@@ -60,7 +68,7 @@ export default function ProductCard({ product, canBuy = true, compact = false })
     });
 
   return (
-    <div className="bg-slate-800/90 border border-slate-700 rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col shadow-xl hover:border-amber-400/70 transition-all duration-200">
+    <div className="bg-slate-800/90 border border-slate-700 rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col shadow-xl hover:border-amber-400/80 hover:shadow-amber-500/10 hover:scale-[1.015] transition-all duration-300">
       {imageSrc ? (
         <div
           className={`w-full overflow-hidden bg-slate-900 ${
@@ -70,7 +78,7 @@ export default function ProductCard({ product, canBuy = true, compact = false })
           <img
             src={imageSrc}
             alt={nombre}
-            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+            className="w-full h-full object-cover hover:scale-110 transition-transform duration-500"
           />
         </div>
       ) : (
@@ -141,13 +149,27 @@ export default function ProductCard({ product, canBuy = true, compact = false })
               type="button"
               disabled={!disponible || loading}
               onClick={handleAddToCart}
-              className={`w-full inline-flex items-center justify-center rounded-xl px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-base font-bold transition min-h-[42px] sm:min-h-[48px] ${
+              className={`w-full inline-flex items-center justify-center gap-2 rounded-xl px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-base font-extrabold transition-all duration-200 min-h-[42px] sm:min-h-[48px] active:scale-95 ${
                 !disponible || loading
                   ? "bg-emerald-600/40 text-emerald-100 cursor-not-allowed"
-                  : "bg-emerald-500 hover:bg-emerald-400 text-slate-950"
+                  : added
+                  ? "bg-amber-400 text-slate-950"
+                  : "bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20"
               }`}
             >
-              {loading ? "..." : "Agregar"}
+              {loading ? (
+                "..."
+              ) : added ? (
+                <>
+                  <FaCheck />
+                  Agregado
+                </>
+              ) : (
+                <>
+                  <FaShoppingCart />
+                  Agregar
+                </>
+              )}
             </button>
           </div>
         )}
