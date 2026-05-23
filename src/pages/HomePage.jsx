@@ -4,6 +4,15 @@ import logoChoriMalpa from "../assets/logo-chorimalpa.png";
 import portadaChoriMalpa from "../assets/chorimalpa12.jpeg";
 import promoChoriMalpa from "../assets/ChoriMalpa1.jpeg";
 
+import {
+  FaFacebook,
+  FaTruck,
+  FaMobileAlt,
+} from "react-icons/fa";
+
+import { GiMeat } from "react-icons/gi";
+import { MdRestaurant } from "react-icons/md";
+
 export default function HomePage() {
   const { isAuthenticated, user, isAdmin } = useAuth();
 
@@ -25,7 +34,9 @@ export default function HomePage() {
 
           <h1 className="text-4xl md:text-6xl font-extrabold mb-6 leading-tight">
             Bienvenido a{" "}
-            <span className="text-amber-400">ChoriMalpa</span>
+            <span className="text-amber-400">
+              ChoriMalpa
+            </span>
           </h1>
 
           {!isAuthenticated && (
@@ -48,9 +59,11 @@ export default function HomePage() {
                   href="https://www.facebook.com/share/1KJHBhWTwA/?mibextid=wwXIfr"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-3 bg-blue-600 hover:bg-blue-700 transition-all duration-200 px-6 py-3 rounded-2xl shadow-xl text-white font-semibold text-sm md:text-base"
+                  className="inline-flex items-center gap-3 bg-blue-600 hover:bg-blue-700 transition-all duration-200 px-6 py-3 rounded-2xl shadow-xl text-white font-semibold text-sm md:text-base hover:scale-105"
                 >
-                  📘 Visita nuestro Facebook oficial
+                  <FaFacebook className="text-2xl" />
+
+                  Visita nuestro Facebook oficial
                 </a>
               </div>
             </>
@@ -81,9 +94,11 @@ export default function HomePage() {
                   href="https://www.facebook.com/share/1KJHBhWTwA/?mibextid=wwXIfr"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-3 bg-blue-600 hover:bg-blue-700 transition-all duration-200 px-5 py-3 rounded-2xl shadow-xl text-white font-semibold"
+                  className="inline-flex items-center gap-3 bg-blue-600 hover:bg-blue-700 transition-all duration-200 px-5 py-3 rounded-2xl shadow-xl text-white font-semibold hover:scale-105"
                 >
-                  📘 Facebook oficial de ChoriMalpa
+                  <FaFacebook className="text-2xl" />
+
+                  Facebook oficial de ChoriMalpa
                 </a>
               </div>
             </div>
@@ -116,20 +131,40 @@ export default function HomePage() {
             </p>
 
             <div className="space-y-4">
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 hover:border-amber-400 transition-colors duration-200">
-                🌭 Chorizo artesanal de alta calidad
+              {/* CARD 1 */}
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-amber-400 transition-all duration-200 flex items-center gap-4 shadow-lg">
+                <MdRestaurant className="text-4xl text-amber-400" />
+
+                <span className="text-lg md:text-xl font-medium">
+                  Chorizo artesanal de alta calidad
+                </span>
               </div>
 
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 hover:border-amber-400 transition-colors duration-200">
-                🥩 Productos frescos y 100% mexicanos
+              {/* CARD 2 */}
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-red-400 transition-all duration-200 flex items-center gap-4 shadow-lg">
+                <GiMeat className="text-4xl text-red-400" />
+
+                <span className="text-lg md:text-xl font-medium">
+                  Productos frescos y 100% mexicanos
+                </span>
               </div>
 
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 hover:border-amber-400 transition-colors duration-200">
-                🚚 Sistema moderno de pedidos y rutas
+              {/* CARD 3 */}
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-blue-400 transition-all duration-200 flex items-center gap-4 shadow-lg">
+                <FaTruck className="text-4xl text-blue-400" />
+
+                <span className="text-lg md:text-xl font-medium">
+                  Sistema moderno de pedidos y rutas
+                </span>
               </div>
 
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 hover:border-blue-400 transition-colors duration-200">
-                📱 Compatible con teléfonos Android y iPhone
+              {/* CARD 4 */}
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-cyan-400 transition-all duration-200 flex items-center gap-4 shadow-lg">
+                <FaMobileAlt className="text-4xl text-cyan-400" />
+
+                <span className="text-lg md:text-xl font-medium">
+                  Compatible con teléfonos Android y iPhone
+                </span>
               </div>
             </div>
 
@@ -138,9 +173,11 @@ export default function HomePage() {
                 href="https://www.facebook.com/share/1KJHBhWTwA/?mibextid=wwXIfr"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-3 bg-blue-600 hover:bg-blue-700 transition-all duration-200 px-6 py-3 rounded-2xl shadow-xl text-white font-semibold"
+                className="inline-flex items-center gap-3 bg-blue-600 hover:bg-blue-700 transition-all duration-200 px-6 py-3 rounded-2xl shadow-xl text-white font-semibold hover:scale-105"
               >
-                📘 Síguenos en Facebook
+                <FaFacebook className="text-2xl" />
+
+                Síguenos en Facebook
               </a>
             </div>
           </div>
