@@ -2,10 +2,11 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../api/axiosInstance";
 
-function AdminInventoryPage() {
+export default function AdminInventoryPage() {
   const [inventario, setInventario] = useState([]);
   const [movimientos, setMovimientos] = useState([]);
   const [productoSeleccionadoId, setProductoSeleccionadoId] = useState("");
+  const [accionActiva, setAccionActiva] = useState("entrada");
 
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
@@ -21,7 +22,7 @@ function AdminInventoryPage() {
   const [savingEntrada, setSavingEntrada] = useState(false);
   const [savingAjuste, setSavingAjuste] = useState(false);
 
-  const formatKg = (n) => `${Number(n || 0)} kg`;
+  const formatKg = (n) => `${Number(n || 0).toLocaleString("es-MX")} kg`;
 
   const formatFecha = (fecha) => {
     if (!fecha) return "Sin fecha";
@@ -40,6 +41,19 @@ function AdminInventoryPage() {
   const productoSeleccionado = useMemo(() => {
     return inventario.find((item) => item.producto?._id === productoSeleccionadoId);
   }, [inventario, productoSeleccionadoId]);
+
+  const resumen = useMemo(() => {
+    const totalProductos = inventario.length;
+    const stockTotal = inventario.reduce(
+      (sum, item) => sum + Number(item.stockActual || 0),
+      0
+    );
+    const bajoStock = inventario.filter(
+      (item) => Number(item.stockActual || 0) <= Number(item.stockMinimo || 0)
+    ).length;
+
+    return { totalProductos, stockTotal, bajoStock };
+  }, [inventario]);
 
   const getInventory = async () => {
     const res = await api.get("/inventario");
@@ -198,14 +212,8 @@ function AdminInventoryPage() {
   };
 
   const getTipoClase = (tipo) => {
-    if (tipo === "entrada") {
-      return "bg-emerald-500/20 text-emerald-300 border-emerald-500/40";
-    }
-
-    if (tipo === "salida") {
-      return "bg-red-500/20 text-red-300 border-red-500/40";
-    }
-
+    if (tipo === "entrada") return "bg-emerald-500/20 text-emerald-300 border-emerald-500/40";
+    if (tipo === "salida") return "bg-red-500/20 text-red-300 border-red-500/40";
     return "bg-sky-500/20 text-sky-300 border-sky-500/40";
   };
 
@@ -240,6 +248,8 @@ function AdminInventoryPage() {
           </div>
         ) : (
           <div className="space-y-6">
+            <DashboardResumen resumen={resumen} formatKg={formatKg} />
+
             <InventarioDesktop
               inventario={inventario}
               formatKg={formatKg}
@@ -251,7 +261,6 @@ function AdminInventoryPage() {
               productoSeleccionadoId={productoSeleccionadoId}
               setProductoSeleccionadoId={setProductoSeleccionadoId}
               formatKg={formatKg}
-              formatFecha={formatFecha}
             />
 
             <PanelAcciones
@@ -259,6 +268,8 @@ function AdminInventoryPage() {
               productoSeleccionado={productoSeleccionado}
               productoSeleccionadoId={productoSeleccionadoId}
               setProductoSeleccionadoId={setProductoSeleccionadoId}
+              accionActiva={accionActiva}
+              setAccionActiva={setAccionActiva}
               minimo={minimo}
               setMinimo={setMinimo}
               entradaCantidad={entradaCantidad}
@@ -293,11 +304,30 @@ function AdminInventoryPage() {
 
 function Header() {
   return (
-    <div className="mb-5 bg-slate-800/70 border border-slate-700 rounded-2xl p-4 sm:p-6 shadow-lg">
+    <div className="mb-5 bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-2xl p-4 sm:p-6 shadow-lg">
       <h1 className="text-3xl sm:text-4xl font-extrabold mb-2">Inventario</h1>
       <p className="text-slate-300 text-sm sm:text-base">
-        Consulta stock, agrega entradas, ajusta cantidades y revisa movimientos.
+        Controla stock, entradas, ajustes y movimientos de productos.
       </p>
+    </div>
+  );
+}
+
+function DashboardResumen({ resumen, formatKg }) {
+  return (
+    <div className="grid grid-cols-3 gap-3">
+      <ResumenCard title="Productos" value={resumen.totalProductos} color="text-amber-400" />
+      <ResumenCard title="Stock total" value={formatKg(resumen.stockTotal)} color="text-emerald-400" />
+      <ResumenCard title="Bajo stock" value={resumen.bajoStock} color={resumen.bajoStock > 0 ? "text-red-400" : "text-sky-400"} />
+    </div>
+  );
+}
+
+function ResumenCard({ title, value, color }) {
+  return (
+    <div className="bg-slate-800 border border-slate-700 rounded-2xl p-3 sm:p-4 shadow-lg">
+      <p className="text-[11px] sm:text-sm text-slate-400 font-semibold">{title}</p>
+      <p className={`text-lg sm:text-3xl font-extrabold mt-1 ${color}`}>{value}</p>
     </div>
   );
 }
@@ -321,30 +351,15 @@ function InventarioDesktop({ inventario, formatKg, formatFecha }) {
             const stockBajo = item.stockActual <= item.stockMinimo;
 
             return (
-              <tr
-                key={item._id}
-                className="border-b border-slate-700 hover:bg-slate-700/40 transition"
-              >
-                <td className="p-4 font-semibold text-lg">
-                  {item.producto?.nombre || "Sin nombre"}
-                </td>
-
+              <tr key={item._id} className="border-b border-slate-700 hover:bg-slate-700/40 transition">
+                <td className="p-4 font-semibold text-lg">{item.producto?.nombre || "Sin nombre"}</td>
                 <td className="p-4">
-                  <span
-                    className={`text-2xl font-bold ${
-                      stockBajo ? "text-red-400" : "text-emerald-400"
-                    }`}
-                  >
+                  <span className={`text-2xl font-bold ${stockBajo ? "text-red-400" : "text-emerald-400"}`}>
                     {formatKg(item.stockActual)}
                   </span>
                 </td>
-
                 <td className="p-4 text-lg">{formatKg(item.stockMinimo)}</td>
-
-                <td className="p-4">
-                  <StockBadge stockBajo={stockBajo} />
-                </td>
-
+                <td className="p-4"><StockBadge stockBajo={stockBajo} /></td>
                 <td className="p-4 text-slate-300">{formatFecha(item.updatedAt)}</td>
               </tr>
             );
@@ -355,75 +370,60 @@ function InventarioDesktop({ inventario, formatKg, formatFecha }) {
   );
 }
 
-function InventarioMobile({
-  inventario,
-  productoSeleccionadoId,
-  setProductoSeleccionadoId,
-  formatKg,
-  formatFecha,
-}) {
+function InventarioMobile({ inventario, productoSeleccionadoId, setProductoSeleccionadoId, formatKg }) {
   return (
     <div className="md:hidden space-y-3">
-      <div className="bg-slate-800/80 border border-slate-700 rounded-2xl p-4">
-        <h2 className="text-xl font-extrabold mb-1">Resumen de productos</h2>
-        <p className="text-slate-400 text-sm">
-          Toca un producto para administrarlo abajo.
-        </p>
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-extrabold">Productos</h2>
+        <span className="text-xs text-slate-400">Toca para administrar</span>
       </div>
 
-      {inventario.map((item) => {
-        const id = item.producto?._id;
-        const activo = id === productoSeleccionadoId;
-        const stockBajo = item.stockActual <= item.stockMinimo;
+      <div className="grid grid-cols-1 gap-3">
+        {inventario.map((item) => {
+          const id = item.producto?._id;
+          const activo = id === productoSeleccionadoId;
+          const stockBajo = item.stockActual <= item.stockMinimo;
 
-        return (
-          <button
-            key={item._id}
-            type="button"
-            onClick={() => setProductoSeleccionadoId(id)}
-            className={`w-full text-left rounded-2xl p-4 border shadow-lg transition ${
-              activo
-                ? "bg-slate-800 border-amber-400"
-                : "bg-slate-800/80 border-slate-700"
-            }`}
-          >
-            <div className="flex items-start justify-between gap-3 mb-3">
-              <div>
-                <p className="text-xs text-slate-400">Producto</p>
-                <h3 className="text-xl font-extrabold leading-tight">
-                  {item.producto?.nombre || "Sin nombre"}
-                </h3>
+          return (
+            <button
+              key={item._id}
+              type="button"
+              onClick={() => setProductoSeleccionadoId(id)}
+              className={`w-full text-left rounded-2xl p-4 border shadow-lg transition active:scale-[0.99] ${
+                activo ? "bg-slate-800 border-amber-400" : "bg-slate-800/80 border-slate-700"
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="text-lg font-extrabold leading-tight truncate">
+                    {item.producto?.nombre || "Sin nombre"}
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Mínimo: {formatKg(item.stockMinimo)}
+                  </p>
+                </div>
+
+                <StockBadge stockBajo={stockBajo} />
               </div>
 
-              <StockBadge stockBajo={stockBajo} />
-            </div>
+              <div className="mt-3 flex items-end justify-between gap-3">
+                <div>
+                  <p className="text-xs text-slate-400">Stock actual</p>
+                  <p className={`text-2xl font-extrabold ${stockBajo ? "text-red-400" : "text-emerald-400"}`}>
+                    {formatKg(item.stockActual)}
+                  </p>
+                </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-slate-900 rounded-xl p-3 border border-slate-700">
-                <p className="text-xs text-slate-400">Stock actual</p>
-                <p
-                  className={`text-2xl font-extrabold ${
-                    stockBajo ? "text-red-400" : "text-emerald-400"
-                  }`}
-                >
-                  {formatKg(item.stockActual)}
-                </p>
+                {activo && (
+                  <span className="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/40 px-3 py-1 rounded-full font-bold">
+                    Seleccionado
+                  </span>
+                )}
               </div>
-
-              <div className="bg-slate-900 rounded-xl p-3 border border-slate-700">
-                <p className="text-xs text-slate-400">Stock mínimo</p>
-                <p className="text-2xl font-extrabold text-white">
-                  {formatKg(item.stockMinimo)}
-                </p>
-              </div>
-            </div>
-
-            <p className="text-xs text-slate-500 mt-3">
-              Última actualización: {formatFecha(item.updatedAt)}
-            </p>
-          </button>
-        );
-      })}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -433,6 +433,8 @@ function PanelAcciones({
   productoSeleccionado,
   productoSeleccionadoId,
   setProductoSeleccionadoId,
+  accionActiva,
+  setAccionActiva,
   minimo,
   setMinimo,
   entradaCantidad,
@@ -451,25 +453,20 @@ function PanelAcciones({
   savingAjuste,
   formatKg,
 }) {
-  const stockBajo =
-    productoSeleccionado?.stockActual <= productoSeleccionado?.stockMinimo;
+  const stockBajo = productoSeleccionado?.stockActual <= productoSeleccionado?.stockMinimo;
 
   return (
     <div className="bg-slate-800 border border-slate-700 rounded-2xl p-4 md:p-5 shadow-lg">
       <div className="mb-4">
-        <h2 className="text-xl md:text-2xl font-extrabold text-white">
-          Administrar inventario
-        </h2>
+        <h2 className="text-xl md:text-2xl font-extrabold">Administrar stock</h2>
         <p className="text-slate-400 text-sm mt-1">
-          Selecciona un producto y aplica la acción necesaria.
+          Selecciona un producto y elige la acción a realizar.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-5">
         <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4">
-          <label className="block text-sm font-bold text-slate-300 mb-2">
-            Producto seleccionado
-          </label>
+          <label className="block text-sm font-bold text-slate-300 mb-2">Producto</label>
 
           <select
             value={productoSeleccionadoId}
@@ -484,7 +481,7 @@ function PanelAcciones({
           </select>
 
           {productoSeleccionado && (
-            <div className="mt-4 space-y-3">
+            <div className="mt-4">
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-2xl font-extrabold">
                   {productoSeleccionado.producto?.nombre || "Sin nombre"}
@@ -492,139 +489,101 @@ function PanelAcciones({
                 <StockBadge stockBajo={stockBajo} />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-slate-800 border border-slate-700 rounded-xl p-3">
-                  <p className="text-xs text-slate-400">Actual</p>
-                  <p
-                    className={`text-2xl font-extrabold ${
-                      stockBajo ? "text-red-400" : "text-emerald-400"
-                    }`}
-                  >
-                    {formatKg(productoSeleccionado.stockActual)}
-                  </p>
-                </div>
-
-                <div className="bg-slate-800 border border-slate-700 rounded-xl p-3">
-                  <p className="text-xs text-slate-400">Mínimo</p>
-                  <p className="text-2xl font-extrabold text-white">
-                    {formatKg(productoSeleccionado.stockMinimo)}
-                  </p>
-                </div>
+              <div className="grid grid-cols-2 gap-3 mt-4">
+                <MiniStat title="Actual" value={formatKg(productoSeleccionado.stockActual)} danger={stockBajo} />
+                <MiniStat title="Mínimo" value={formatKg(productoSeleccionado.stockMinimo)} />
               </div>
             </div>
           )}
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-          <ActionCard title="Stock mínimo" color="violet">
-            <input
-              type="number"
-              min="0"
-              placeholder="Ej. 30"
-              value={minimo}
-              onChange={(e) => setMinimo(e.target.value)}
-              className="input-inv"
-            />
+        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4">
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            <TabButton active={accionActiva === "entrada"} onClick={() => setAccionActiva("entrada")}>
+              Agregar
+            </TabButton>
+            <TabButton active={accionActiva === "ajuste"} onClick={() => setAccionActiva("ajuste")}>
+              Ajustar
+            </TabButton>
+            <TabButton active={accionActiva === "minimo"} onClick={() => setAccionActiva("minimo")}>
+              Mínimo
+            </TabButton>
+          </div>
 
-            <button
-              type="button"
-              onClick={handleGuardarMinimo}
-              disabled={savingMinimo}
-              className="btn-inv bg-violet-500 hover:bg-violet-600"
-            >
-              {savingMinimo ? "Guardando..." : "Guardar mínimo"}
-            </button>
-          </ActionCard>
+          {accionActiva === "entrada" && (
+            <div className="space-y-3">
+              <h3 className="text-xl font-extrabold text-emerald-400">Agregar stock</h3>
+              <input className="input-inv" type="number" min="1" step="0.5" placeholder="Cantidad en kg" value={entradaCantidad} onChange={(e) => setEntradaCantidad(e.target.value)} />
+              <input className="input-inv" type="text" placeholder="Motivo opcional" value={entradaMotivo} onChange={(e) => setEntradaMotivo(e.target.value)} />
+              <button type="button" onClick={handleAgregarStock} disabled={savingEntrada} className="btn-inv bg-emerald-500 hover:bg-emerald-600">
+                {savingEntrada ? "Agregando..." : "Agregar stock"}
+              </button>
+            </div>
+          )}
 
-          <ActionCard title="Agregar stock" color="amber">
-            <input
-              type="number"
-              min="1"
-              step="0.5"
-              placeholder="Cantidad en kg"
-              value={entradaCantidad}
-              onChange={(e) => setEntradaCantidad(e.target.value)}
-              className="input-inv"
-            />
+          {accionActiva === "ajuste" && (
+            <div className="space-y-3">
+              <h3 className="text-xl font-extrabold text-sky-400">Ajustar stock</h3>
+              <input className="input-inv" type="number" min="0" step="0.5" placeholder="Nuevo stock total en kg" value={ajusteStock} onChange={(e) => setAjusteStock(e.target.value)} />
+              <input className="input-inv" type="text" placeholder="Motivo opcional" value={ajusteMotivo} onChange={(e) => setAjusteMotivo(e.target.value)} />
+              <button type="button" onClick={handleAjustarStock} disabled={savingAjuste} className="btn-inv bg-sky-500 hover:bg-sky-600">
+                {savingAjuste ? "Ajustando..." : "Ajustar stock"}
+              </button>
+            </div>
+          )}
 
-            <input
-              type="text"
-              placeholder="Motivo"
-              value={entradaMotivo}
-              onChange={(e) => setEntradaMotivo(e.target.value)}
-              className="input-inv"
-            />
-
-            <button
-              type="button"
-              onClick={handleAgregarStock}
-              disabled={savingEntrada}
-              className="btn-inv bg-emerald-500 hover:bg-emerald-600"
-            >
-              {savingEntrada ? "Agregando..." : "Agregar"}
-            </button>
-          </ActionCard>
-
-          <ActionCard title="Ajustar stock" color="sky">
-            <input
-              type="number"
-              min="0"
-              step="0.5"
-              placeholder="Nuevo stock en kg"
-              value={ajusteStock}
-              onChange={(e) => setAjusteStock(e.target.value)}
-              className="input-inv"
-            />
-
-            <input
-              type="text"
-              placeholder="Motivo"
-              value={ajusteMotivo}
-              onChange={(e) => setAjusteMotivo(e.target.value)}
-              className="input-inv"
-            />
-
-            <button
-              type="button"
-              onClick={handleAjustarStock}
-              disabled={savingAjuste}
-              className="btn-inv bg-sky-500 hover:bg-sky-600"
-            >
-              {savingAjuste ? "Ajustando..." : "Ajustar"}
-            </button>
-          </ActionCard>
+          {accionActiva === "minimo" && (
+            <div className="space-y-3">
+              <h3 className="text-xl font-extrabold text-violet-400">Cambiar mínimo</h3>
+              <input className="input-inv" type="number" min="0" placeholder="Stock mínimo en kg" value={minimo} onChange={(e) => setMinimo(e.target.value)} />
+              <button type="button" onClick={handleGuardarMinimo} disabled={savingMinimo} className="btn-inv bg-violet-500 hover:bg-violet-600">
+                {savingMinimo ? "Guardando..." : "Guardar mínimo"}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function ActionCard({ title, color, children }) {
-  const colorClass =
-    color === "violet"
-      ? "text-violet-400"
-      : color === "amber"
-      ? "text-amber-400"
-      : "text-sky-400";
-
+function MiniStat({ title, value, danger = false }) {
   return (
-    <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 space-y-3">
-      <h3 className={`text-xl font-extrabold ${colorClass}`}>{title}</h3>
-      {children}
+    <div className="bg-slate-800 border border-slate-700 rounded-xl p-3">
+      <p className="text-xs text-slate-400">{title}</p>
+      <p className={`text-xl font-extrabold ${danger ? "text-red-400" : "text-white"}`}>{value}</p>
     </div>
   );
 }
 
+function TabButton({ active, children, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-xl px-3 py-3 text-xs sm:text-sm font-extrabold transition active:scale-95 ${
+        active
+          ? "bg-amber-500 text-slate-950"
+          : "bg-slate-800 text-slate-300 border border-slate-700"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
 function Movimientos({ movimientos, getTipoClase, formatKg, formatFecha }) {
+  const limpiarMotivo = (motivo = "") => {
+    if (!motivo) return "Sin motivo";
+    if (motivo.length > 45) return `${motivo.slice(0, 45)}...`;
+    return motivo;
+  };
+
   return (
     <div className="bg-slate-800 border border-slate-700 rounded-2xl p-4 md:p-5 shadow-lg">
       <div className="mb-4">
-        <h2 className="text-xl md:text-2xl font-extrabold text-white">
-          Movimientos de inventario
-        </h2>
-        <p className="text-slate-400 mt-1 text-sm md:text-base">
-          Últimos registros de entradas, salidas y ajustes.
-        </p>
+        <h2 className="text-xl md:text-2xl font-extrabold">Movimientos</h2>
+        <p className="text-slate-400 mt-1 text-sm">Últimos cambios del inventario.</p>
       </div>
 
       {movimientos.length === 0 ? (
@@ -634,7 +593,7 @@ function Movimientos({ movimientos, getTipoClase, formatKg, formatFecha }) {
       ) : (
         <>
           <div className="hidden md:block overflow-x-auto rounded-xl border border-slate-700 max-h-[420px] overflow-y-auto">
-            <table className="min-w-[900px] w-full bg-slate-900 text-white">
+            <table className="min-w-[900px] w-full bg-slate-900">
               <thead className="sticky top-0 bg-slate-700">
                 <tr className="text-left">
                   <th className="p-4">Producto</th>
@@ -648,37 +607,13 @@ function Movimientos({ movimientos, getTipoClase, formatKg, formatFecha }) {
 
               <tbody>
                 {movimientos.map((mov) => (
-                  <tr
-                    key={mov._id}
-                    className="border-b border-slate-700 hover:bg-slate-700/30 transition"
-                  >
-                    <td className="p-4 font-medium">
-                      {mov.producto?.nombre || "Sin producto"}
-                    </td>
-
-                    <td className="p-4">
-                      <span
-                        className={`px-3 py-1 rounded-full text-sm font-semibold border ${getTipoClase(
-                          mov.tipo
-                        )}`}
-                      >
-                        {mov.tipo}
-                      </span>
-                    </td>
-
+                  <tr key={mov._id} className="border-b border-slate-700 hover:bg-slate-700/30 transition">
+                    <td className="p-4 font-medium">{mov.producto?.nombre || "Sin producto"}</td>
+                    <td className="p-4"><span className={`px-3 py-1 rounded-full text-sm font-semibold border ${getTipoClase(mov.tipo)}`}>{mov.tipo}</span></td>
                     <td className="p-4 font-semibold">{formatKg(mov.cantidad)}</td>
-
-                    <td className="p-4 text-slate-300">
-                      {mov.motivo || "Sin motivo"}
-                    </td>
-
-                    <td className="p-4 text-slate-300">
-                      {mov.usuario?.nombre || "Sin usuario"}
-                    </td>
-
-                    <td className="p-4 text-slate-300">
-                      {formatFecha(mov.createdAt)}
-                    </td>
+                    <td className="p-4 text-slate-300">{limpiarMotivo(mov.motivo)}</td>
+                    <td className="p-4 text-slate-300">{mov.usuario?.nombre || "Sin usuario"}</td>
+                    <td className="p-4 text-slate-300">{formatFecha(mov.createdAt)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -687,25 +622,13 @@ function Movimientos({ movimientos, getTipoClase, formatKg, formatFecha }) {
 
           <div className="md:hidden space-y-2">
             {movimientos.slice(0, 12).map((mov) => (
-              <div
-                key={mov._id}
-                className="bg-slate-900 border border-slate-700 rounded-2xl p-3"
-              >
+              <div key={mov._id} className="bg-slate-900 border border-slate-700 rounded-2xl p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h3 className="font-bold text-white truncate">
-                      {mov.producto?.nombre || "Sin producto"}
-                    </h3>
-                    <p className="text-xs text-slate-400 mt-1">
-                      {formatFecha(mov.createdAt)}
-                    </p>
+                    <h3 className="font-bold truncate">{mov.producto?.nombre || "Sin producto"}</h3>
+                    <p className="text-xs text-slate-400 mt-1">{formatFecha(mov.createdAt)}</p>
                   </div>
-
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-bold border ${getTipoClase(
-                      mov.tipo
-                    )}`}
-                  >
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getTipoClase(mov.tipo)}`}>
                     {mov.tipo}
                   </span>
                 </div>
@@ -713,13 +636,10 @@ function Movimientos({ movimientos, getTipoClase, formatKg, formatFecha }) {
                 <div className="mt-3 flex items-center justify-between gap-3">
                   <div>
                     <p className="text-xs text-slate-400">Cantidad</p>
-                    <p className="text-lg font-extrabold text-amber-400">
-                      {formatKg(mov.cantidad)}
-                    </p>
+                    <p className="text-lg font-extrabold text-amber-400">{formatKg(mov.cantidad)}</p>
                   </div>
-
                   <p className="text-xs text-slate-500 text-right max-w-[55%] line-clamp-2">
-                    {mov.motivo || "Sin motivo"}
+                    {limpiarMotivo(mov.motivo)}
                   </p>
                 </div>
               </div>
@@ -742,5 +662,3 @@ function StockBadge({ stockBajo }) {
     </span>
   );
 }
-
-export default AdminInventoryPage;
