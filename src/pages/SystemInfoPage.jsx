@@ -1,58 +1,25 @@
-import logoChoriMalpa from "../assets/logo-chorimalpa.png";
+// src/pages/SystemInfoPage.jsx
 
 export default function SystemInfoPage() {
   return (
-    <main className="max-w-6xl mx-auto px-4 py-8">
-      <section className="bg-slate-800 border border-slate-700 rounded-2xl p-8 shadow-xl">
-        <div className="flex flex-col items-center text-center">
-          <img
-            src={logoChoriMalpa}
-            alt="Logo CHORIMALPA"
-            className="w-32 h-32 rounded-2xl object-cover mb-5 shadow-lg"
-          />
+    <main className="p-8">
+      <h1 className="text-3xl font-bold text-yellow-400 mb-6">
+        Información del Sistema
+      </h1>
 
-          <h1 className="text-4xl md:text-5xl font-extrabold">
-            Chori<span className="text-yellow-400">Web</span>
-          </h1>
+      <section className="bg-slate-800 rounded-2xl shadow-lg p-6 max-w-4xl">
+        <h2 className="text-2xl font-bold mb-4">ChoriWeb</h2>
 
-          <p className="mt-3 text-slate-300 text-lg">
-            Sistema de gestión de ventas, pedidos, inventario y rutas.
-          </p>
+        <div className="space-y-3 text-slate-200">
+          <p><strong>Nombre del sistema:</strong> ChoriWeb</p>
+          <p><strong>Versión:</strong> 1.0</p>
+          <p><strong>Empresa:</strong> Chorizos Malpaso</p>
+          <p><strong>Frontend:</strong> React + Vite</p>
+          <p><strong>Backend:</strong> Node.js + Express</p>
+          <p><strong>Base de datos:</strong> MongoDB Atlas</p>
+          <p><strong>Estado:</strong> Sistema activo y en funcionamiento</p>
         </div>
-
-        <div className="mt-10 grid md:grid-cols-2 gap-5">
-          <Info title="Versión" value="1.0.0" />
-          <Info title="Empresa" value="CHORIMALPA" />
-          <Info title="Desarrollador" value="Aaron Albino Ojeda" />
-          <Info title="Institución" value="Instituto Tecnológico de Zacatecas" />
-          <Info title="Correo" value="aaron1albino2@gmail.com" />
-          <Info title="Fecha" value="Junio 2026" />
-        </div>
-
-        <div className="mt-8 bg-slate-900 border border-slate-700 rounded-xl p-5">
-          <h2 className="text-2xl font-bold text-yellow-400 mb-3">
-            Información del sistema
-          </h2>
-          <p className="text-slate-300 leading-relaxed">
-            ChoriWeb es una plataforma web desarrollada para la empresa
-            CHORIMALPA, orientada a la administración de pedidos, productos,
-            inventario, rutas de entrega y distribución.
-          </p>
-        </div>
-
-        <p className="mt-8 text-center text-slate-400 text-sm">
-          © 2026 ChoriWeb. Todos los derechos reservados.
-        </p>
       </section>
     </main>
-  );
-}
-
-function Info({ title, value }) {
-  return (
-    <div className="bg-slate-900 border border-slate-700 rounded-xl p-5">
-      <p className="text-slate-400 text-sm">{title}</p>
-      <p className="text-white font-bold text-lg mt-1">{value}</p>
-    </div>
   );
 }
