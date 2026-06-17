@@ -9,14 +9,11 @@ export default function Navbar() {
 
   const isRutero = user?.tipo === "rutero";
 
-  // Productos del carrito
   const cartItems = cart?.items || [];
 
-  // Contador total
   const cartCount = Array.isArray(cartItems)
     ? cartItems.reduce(
-        (total, item) =>
-          total + Number(item.cantidad || item.quantity || 1),
+        (total, item) => total + Number(item.cantidad || item.quantity || 1),
         0
       )
     : 0;
@@ -37,8 +34,6 @@ export default function Navbar() {
     <nav className="bg-slate-950/95 backdrop-blur-md text-white sticky top-0 z-50 shadow-lg border-b border-slate-800">
       <div className="max-w-7xl mx-auto px-4 py-3">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-
-          {/* Logo */}
           <Link
             to="/"
             className="text-xl md:text-2xl font-extrabold tracking-wide text-white"
@@ -46,9 +41,7 @@ export default function Navbar() {
             ChoriWeb
           </Link>
 
-          {/* Links */}
           <div className="flex items-center gap-1 md:gap-2 overflow-x-auto pb-1 md:pb-0">
-
             {isAuthenticated && !isRutero && (
               <NavLink to="/productos" className={getLinkClass}>
                 Ver tienda
@@ -57,7 +50,6 @@ export default function Navbar() {
 
             {isAuthenticated && !isAdmin && !isRutero && (
               <>
-                {/* Carrito */}
                 <NavLink
                   to="/carrito"
                   className={({ isActive }) =>
@@ -69,7 +61,6 @@ export default function Navbar() {
                   <span className="relative inline-flex">
                     <FaShoppingCart className="text-base" />
 
-                    {/* Puntito rojo */}
                     {cartCount > 0 && (
                       <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold min-w-[16px] h-[16px] px-1 rounded-full flex items-center justify-center border border-slate-950">
                         {cartCount}
@@ -113,11 +104,14 @@ export default function Navbar() {
                 <NavLink to="/admin/rutas" className={getLinkClass}>
                   Rutas
                 </NavLink>
+
+                <NavLink to="/admin/sistema" className={getLinkClass}>
+                  Sistema
+                </NavLink>
               </>
             )}
           </div>
 
-          {/* Usuario */}
           <div className="flex items-center justify-between md:justify-end gap-3">
             {isAuthenticated ? (
               <>
